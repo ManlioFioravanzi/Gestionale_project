@@ -1,7 +1,8 @@
-import { addDays, addMinutes, endOfDay, formatISO, parseISO, set } from "date-fns";
+import { addDays, addMinutes, endOfDay, formatISO, parseISO, set, startOfDay } from "date-fns";
 
 import { hasSlotAvailable, listAvailability } from "./availability";
 import type {
+  AdminBookingDraft,
   AuditEvent,
   AvailabilityRule,
   Blackout,
@@ -31,8 +32,13 @@ export interface DashboardSnapshot {
       customerName: string;
       staffName: string;
       serviceName: string;
+      serviceId: string;
+      durationMinutes: number;
     }
   >;
+  availabilityRules: AvailabilityRule[];
+  blackouts: Blackout[];
+  bookingItems: BookingItem[];
   payments: Payment[];
   notifications: NotificationLog[];
   metrics: {
@@ -73,6 +79,7 @@ function getNextOperationalDate() {
 }
 
 function createInitialState(): DemoState {
+  const seededNow = new Date().toISOString();
   const tenant: Tenant = {
     id: "tenant_studio_aurora",
     businessName: "Studio Aurora",
@@ -254,7 +261,7 @@ function createInitialState(): DemoState {
       channel: "admin",
       startsAt: bookingTwoStart,
       endsAt: bookingTwoEnd,
-      notes: "Ritoccare tonalita' ramata.",
+      notes: "Ritoccare tonalità ramata.",
       depositRequiredCents: 4600,
       depositCollectedCents: 0,
       createdAt: bookingTwoStart,
@@ -292,8 +299,8 @@ function createInitialState(): DemoState {
       status: "paid",
       amountCents: 1650,
       paymentIntentId: "pi_demo_001",
-      createdAt: bookingOneStart,
-      updatedAt: bookingOneStart,
+      createdAt: seededNow,
+      updatedAt: seededNow,
     },
     {
       id: "pay_002",
@@ -316,7 +323,16 @@ function createInitialState(): DemoState {
       recipient: customers[0].email,
       status: "sent",
       templateKey: "booking-confirmed",
-      sentAt: bookingOneStart,
+      sentAt: seededNow,
+    },
+    {
+      id: "notif_002",
+      tenantId: tenant.id,
+      bookingId: bookings[1].id,
+      channel: "email",
+      recipient: customers[1].email,
+      status: "queued",
+      templateKey: "booking-confirmed",
     },
   ];
 
@@ -350,6 +366,162 @@ function createInitialState(): DemoState {
 }
 
 let state = createInitialState();
+
+function getCustomerById(customerId: string) {
+  return state.customers.find((entry) => entry.id === customerId);
+}
+
+function pushNotification({
+  tenantId,
+  bookingId,
+  recipient,
+  templateKey,
+  status = "queued",
+  sentAt,
+}: {
+  tenantId: string;
+  bookingId: string;
+  recipient: string;
+  templateKey: string;
+  status?: NotificationLog["status"];
+  sentAt?: string;
+}) {
+  state.notifications.push({
+    id: crypto.randomUUID(),
+    tenantId,
+    bookingId,
+    channel: "email",
+    recipient,
+    status,
+    templateKey,
+    sentAt,
+  });
+}
+
+function pushBookingNotification(
+  booking: Booking,
+  templateKey: string,
+  status: NotificationLog["status"] = "queued",
+  sentAt?: string,
+) {
+  const customer = getCustomerById(booking.customerId);
+
+  if (!customer) {
+    return;
+  }
+
+  pushNotification({
+    tenantId: booking.tenantId,
+    bookingId: booking.id,
+    recipient: customer.email,
+    templateKey,
+    status,
+    sentAt,
+  });
+}
+
+function getBookingItem(bookingId: string) {
+  return state.bookingItems.find((entry) => entry.bookingId === bookingId);
+}
+
+function getServiceByBookingId(bookingId: string) {
+  const item = getBookingItem(bookingId);
+  return item ? state.services.find((entry) => entry.id === item.serviceId) : undefined;
+}
+
+function getOrCreateCustomer({
+  tenantId,
+  customerName,
+  customerEmail,
+  customerPhone,
+}: {
+  tenantId: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+}) {
+  const existing = state.customers.find((item) => item.email === customerEmail);
+
+  if (existing) {
+    existing.fullName = customerName;
+    existing.phone = customerPhone;
+    return existing;
+  }
+
+  const customer: Customer = {
+    id: crypto.randomUUID(),
+    tenantId,
+    fullName: customerName,
+    email: customerEmail,
+    phone: customerPhone,
+  };
+  state.customers.push(customer);
+  return customer;
+}
+
+function buildBookingBundle({
+  tenant,
+  service,
+  customer,
+  staffMemberId,
+  channel,
+  startsAt,
+  notes,
+}: {
+  tenant: Tenant;
+  service: Service;
+  customer: Customer;
+  staffMemberId: string;
+  channel: Booking["channel"];
+  startsAt: string;
+  notes?: string;
+}) {
+  const start = parseISO(startsAt);
+  const end = addMinutes(start, service.durationMinutes);
+  const createdAt = new Date().toISOString();
+
+  const booking: Booking = {
+    id: crypto.randomUUID(),
+    tenantId: tenant.id,
+    locationId: service.locationId,
+    customerId: customer.id,
+    staffMemberId,
+    profile: service.profile,
+    status: "confirmed",
+    paymentStatus: "pending",
+    channel,
+    startsAt: formatISO(start),
+    endsAt: formatISO(end),
+    notes,
+    depositRequiredCents: calculateDepositCents(service, tenant),
+    depositCollectedCents: 0,
+    createdAt,
+    updatedAt: createdAt,
+  };
+
+  const item: BookingItem = {
+    id: crypto.randomUUID(),
+    bookingId: booking.id,
+    serviceId: service.id,
+    durationMinutes: service.durationMinutes,
+    bufferBeforeMinutes: service.bufferBeforeMinutes,
+    bufferAfterMinutes: service.bufferAfterMinutes,
+    unitPriceCents: service.priceCents,
+  };
+
+  const payment: Payment = {
+    id: crypto.randomUUID(),
+    tenantId: tenant.id,
+    bookingId: booking.id,
+    provider: channel === "web" ? "stripe" : "manual",
+    status: "pending",
+    amountCents: booking.depositRequiredCents,
+    createdAt,
+    updatedAt: createdAt,
+  };
+
+  return { booking, item, payment };
+}
 
 function ensureTenant(slug: string) {
   if (state.tenant.slug !== slug) {
@@ -433,68 +605,29 @@ export function createPublicBooking(input: BookingDraft): BookingConfirmation {
     throw new Error("No valid staff member available for this slot");
   }
 
-  const customer =
-    state.customers.find((item) => item.email === input.customerEmail) ??
-    (() => {
-      const newCustomer: Customer = {
-        id: crypto.randomUUID(),
-        tenantId: tenant.id,
-        fullName: input.customerName,
-        email: input.customerEmail,
-        phone: input.customerPhone,
-      };
-      state.customers.push(newCustomer);
-      return newCustomer;
-    })();
-
-  const booking: Booking = {
-    id: crypto.randomUUID(),
+  const customer = getOrCreateCustomer({
     tenantId: tenant.id,
-    locationId: service.locationId,
-    customerId: customer.id,
+    customerName: input.customerName,
+    customerEmail: input.customerEmail,
+    customerPhone: input.customerPhone,
+  });
+
+  const { booking, item, payment } = buildBookingBundle({
+    tenant,
+    service,
+    customer,
     staffMemberId: chosenSlot.staffMemberId,
-    profile: service.profile,
-    status: "confirmed",
-    paymentStatus: "pending",
     channel: "web",
-    startsAt: formatISO(startsAt),
-    endsAt: formatISO(endsAt),
+    startsAt: input.startsAt,
     notes: input.notes,
-    depositRequiredCents: calculateDepositCents(service, tenant),
-    depositCollectedCents: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-
-  const item: BookingItem = {
-    id: crypto.randomUUID(),
-    bookingId: booking.id,
-    serviceId: service.id,
-    durationMinutes: service.durationMinutes,
-    bufferBeforeMinutes: service.bufferBeforeMinutes,
-    bufferAfterMinutes: service.bufferAfterMinutes,
-    unitPriceCents: service.priceCents,
-  };
-
-  const payment: Payment = {
-    id: crypto.randomUUID(),
-    tenantId: tenant.id,
-    bookingId: booking.id,
-    provider: "stripe",
-    status: "pending",
-    amountCents: booking.depositRequiredCents,
-    createdAt: booking.createdAt,
-    updatedAt: booking.updatedAt,
-  };
+  });
 
   state.bookings.push(booking);
   state.bookingItems.push(item);
   state.payments.push(payment);
-  state.notifications.push({
-    id: crypto.randomUUID(),
+  pushNotification({
     tenantId: tenant.id,
     bookingId: booking.id,
-    channel: "email",
     recipient: customer.email,
     status: "queued",
     templateKey: "booking-confirmed",
@@ -511,6 +644,74 @@ export function createPublicBooking(input: BookingDraft): BookingConfirmation {
       channel: booking.channel,
       status: booking.status,
       depositRequiredCents: booking.depositRequiredCents,
+    },
+  });
+
+  return {
+    booking,
+    items: [item],
+    customer,
+    payment,
+  };
+}
+
+export function createAdminBooking(input: AdminBookingDraft): BookingConfirmation {
+  const tenant = ensureTenant(input.slug);
+  const service = state.services.find((item) => item.id === input.serviceId);
+
+  if (!service) {
+    throw new Error(`Service ${input.serviceId} not found`);
+  }
+
+  const date = input.startsAt.slice(0, 10);
+  const slots = listAvailability({
+    date,
+    tenant,
+    service,
+    staffMembers: state.staffMembers,
+    availabilityRules: state.availabilityRules,
+    blackouts: state.blackouts,
+    bookings: state.bookings,
+    bookingItems: state.bookingItems,
+  });
+
+  if (!hasSlotAvailable(slots, input.startsAt, input.staffMemberId)) {
+    throw new Error("Questo buco non è più disponibile.");
+  }
+
+  const customer = getOrCreateCustomer({
+    tenantId: tenant.id,
+    customerName: input.customerName,
+    customerEmail: input.customerEmail,
+    customerPhone: input.customerPhone,
+  });
+
+  const { booking, item, payment } = buildBookingBundle({
+    tenant,
+    service,
+    customer,
+    staffMemberId: input.staffMemberId,
+    channel: "admin",
+    startsAt: input.startsAt,
+    notes: input.notes,
+  });
+
+  state.bookings.push(booking);
+  state.bookingItems.push(item);
+  state.payments.push(payment);
+  pushBookingNotification(booking, "booking-confirmed");
+  state.auditEvents.push({
+    id: crypto.randomUUID(),
+    tenantId: tenant.id,
+    actorLabel: "Desktop planning",
+    entityType: "booking",
+    entityId: booking.id,
+    action: "booking.created_admin",
+    createdAt: booking.createdAt,
+    payload: {
+      channel: booking.channel,
+      staffMemberId: booking.staffMemberId,
+      startsAt: booking.startsAt,
     },
   });
 
@@ -558,6 +759,14 @@ export function markBookingDepositPaid(bookingId: string, checkoutSessionId?: st
     return;
   }
 
+  if (booking.status !== "confirmed" && booking.status !== "completed") {
+    throw new Error(`Azione finanziaria non disponibile per prenotazioni in stato ${booking.status}.`);
+  }
+
+  if (payment.status === "paid") {
+    return;
+  }
+
   payment.status = "paid";
   payment.checkoutSessionId = checkoutSessionId;
   payment.updatedAt = new Date().toISOString();
@@ -571,6 +780,14 @@ export function markBookingRefunded(bookingId: string) {
   const booking = state.bookings.find((entry) => entry.id === bookingId);
 
   if (!payment || !booking) {
+    return;
+  }
+
+  if (booking.status !== "confirmed" && booking.status !== "completed") {
+    throw new Error(`Azione finanziaria non disponibile per prenotazioni in stato ${booking.status}.`);
+  }
+
+  if (payment.status !== "paid") {
     return;
   }
 
@@ -591,8 +808,13 @@ export function updateBookingStatus(
     throw new Error(`Booking ${bookingId} not found`);
   }
 
+  if (booking.status === status) {
+    return;
+  }
+
   booking.status = status;
   booking.updatedAt = new Date().toISOString();
+  pushBookingNotification(booking, `booking-${status}`);
   state.auditEvents.push({
     id: crypto.randomUUID(),
     tenantId: booking.tenantId,
@@ -603,6 +825,60 @@ export function updateBookingStatus(
     createdAt: booking.updatedAt,
     payload: { status },
   });
+}
+
+export function rescheduleBooking(
+  bookingId: string,
+  startsAt: string,
+  staffMemberId: string,
+  actorLabel = "Desktop planning",
+) {
+  const booking = state.bookings.find((entry) => entry.id === bookingId);
+  const item = getBookingItem(bookingId);
+  const service = getServiceByBookingId(bookingId);
+
+  if (!booking || !item || !service) {
+    throw new Error(`Booking ${bookingId} not found`);
+  }
+
+  const date = startsAt.slice(0, 10);
+  const availableSlots = listAvailability({
+    date,
+    tenant: state.tenant,
+    service,
+    staffMembers: state.staffMembers,
+    availabilityRules: state.availabilityRules,
+    blackouts: state.blackouts,
+    bookings: state.bookings.filter((entry) => entry.id !== bookingId),
+    bookingItems: state.bookingItems.filter((entry) => entry.bookingId !== bookingId),
+  });
+
+  if (!hasSlotAvailable(availableSlots, startsAt, staffMemberId)) {
+    throw new Error("Lo slot scelto non è disponibile per lo spostamento.");
+  }
+
+  booking.staffMemberId = staffMemberId;
+  booking.startsAt = startsAt;
+  booking.endsAt = formatISO(addMinutes(parseISO(startsAt), item.durationMinutes));
+  booking.updatedAt = new Date().toISOString();
+  booking.status = "confirmed";
+  pushBookingNotification(booking, "booking-rescheduled");
+
+  state.auditEvents.push({
+    id: crypto.randomUUID(),
+    tenantId: booking.tenantId,
+    actorLabel,
+    entityType: "booking",
+    entityId: booking.id,
+    action: "booking.rescheduled",
+    createdAt: booking.updatedAt,
+    payload: {
+      startsAt: booking.startsAt,
+      staffMemberId: booking.staffMemberId,
+    },
+  });
+
+  return structuredClone(booking);
 }
 
 export function getDashboardSnapshot(slug: string): DashboardSnapshot {
@@ -620,6 +896,8 @@ export function getDashboardSnapshot(slug: string): DashboardSnapshot {
         customerName: customer.fullName,
         staffName: staff.fullName,
         serviceName: service.name,
+        serviceId: service.id,
+        durationMinutes: item.durationMinutes,
       };
     })
     .sort((left, right) => left.startsAt.localeCompare(right.startsAt));
@@ -629,7 +907,7 @@ export function getDashboardSnapshot(slug: string): DashboardSnapshot {
     .filter(
       (payment) =>
         payment.status === "paid" &&
-        parseISO(payment.updatedAt) >= set(now, { hours: 0, minutes: 0, seconds: 0, milliseconds: 0 }) &&
+        parseISO(payment.updatedAt) >= startOfDay(now) &&
         parseISO(payment.updatedAt) <= endOfDay(now),
     )
     .reduce((sum, payment) => sum + payment.amountCents, 0);
@@ -645,10 +923,19 @@ export function getDashboardSnapshot(slug: string): DashboardSnapshot {
     services: structuredClone(state.services),
     customers: structuredClone(state.customers),
     bookings: structuredClone(bookings),
+    availabilityRules: structuredClone(state.availabilityRules),
+    blackouts: structuredClone(state.blackouts),
+    bookingItems: structuredClone(state.bookingItems),
     payments: structuredClone(state.payments),
     notifications: structuredClone(state.notifications),
     metrics: {
-      upcomingBookings: bookings.filter((booking) => parseISO(booking.startsAt) >= now).length,
+      upcomingBookings: bookings.filter(
+        (booking) =>
+          parseISO(booking.startsAt) >= now &&
+          booking.status !== "completed" &&
+          booking.status !== "cancelled" &&
+          booking.status !== "no_show",
+      ).length,
       revenueTodayCents,
       pendingDepositsCents,
       customerCount: state.customers.length,

@@ -9,9 +9,6 @@ function createWindow() {
     minHeight: 760,
     title: "Booking OS Desktop",
     backgroundColor: "#f2e6d8",
-    webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
-    },
   });
 
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;

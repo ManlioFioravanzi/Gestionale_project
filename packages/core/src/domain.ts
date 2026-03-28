@@ -183,6 +183,17 @@ export interface BookingDraft {
   notes?: string;
 }
 
+export interface AdminBookingDraft {
+  slug: string;
+  serviceId: string;
+  staffMemberId: string;
+  startsAt: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  notes?: string;
+}
+
 export interface AvailabilitySlot {
   startsAt: string;
   endsAt: string;

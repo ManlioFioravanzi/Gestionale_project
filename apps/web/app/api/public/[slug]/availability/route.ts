@@ -21,7 +21,7 @@ export async function GET(
     return NextResponse.json({ slots });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Disponibilita' non disponibile." },
+      { error: error instanceof Error ? error.message : "Disponibilità non disponibile." },
       { status: 400 },
     );
   }

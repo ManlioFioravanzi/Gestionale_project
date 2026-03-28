@@ -75,7 +75,7 @@ export function BookingShell({
 
       if (!response.ok) {
         startTransition(() => {
-          setError(payload.error ?? "Impossibile caricare la disponibilita'.");
+          setError(payload.error ?? "Impossibile caricare la disponibilità.");
           setSlots([]);
         });
         return;

@@ -1,0 +1,16 @@
+{
+  "name": "@booking/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k \"vite --host 127.0.0.1 --port 5174\" \"wait-on tcp:5174 && VITE_DEV_SERVER_URL=http://127.0.0.1:5174 electron --require tsx/cjs electron/main.ts\"",
+    "build": "tsc -p tsconfig.node.json && vite build",
+    "start": "npm run build && electron dist-electron/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit"
+  },
+  "dependencies": {
+    "@booking/core": "file:../../packages/core",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  }
+}

@@ -1,4 +1,5 @@
 import { getPublicSettings, listPublicServices, listPublicStaff } from "@booking/core";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { BookingShell } from "../../components/booking-shell";
@@ -22,32 +23,65 @@ export default async function TenantPage({ params, searchParams }: TenantPagePro
     const bookingId = typeof query.bookingId === "string" ? query.bookingId : undefined;
 
     return (
-      <main className="tenant-shell">
-        <section className="tenant-hero">
-          <div>
-            <p className="eyebrow">Tenant pubblico</p>
-            <h1>{settings.businessName}</h1>
-            <p className="lede">
-              Booking engine V1 per il profilo `appointments`: prenotazione self-service,
-              caparra, conferma e dati pronti per il backoffice desktop.
-            </p>
+      <>
+        <nav className="site-navbar">
+          <Link href="/" className="brand">
+            <span className="brand-icon">BO</span>
+            Booking OS
+          </Link>
+          <div className="nav-links">
+            <Link className="nav-link" href="/">Home</Link>
+            <Link className="nav-link cta" href={`/${slug}`}>Prenota ora</Link>
           </div>
-          <div className="hero-badge">
-            <span>Timezone</span>
-            <strong>{settings.timezone}</strong>
-            <span>Valuta</span>
-            <strong>{settings.currency}</strong>
-          </div>
-        </section>
+        </nav>
 
-        <BookingShell
-          settings={settings}
-          services={services}
-          staffMembers={staffMembers}
-          checkoutState={checkoutState}
-          bookingId={bookingId}
-        />
-      </main>
+        <main className="tenant-shell">
+          <nav className="breadcrumb animate-in" aria-label="Breadcrumb">
+            <Link href="/">Home</Link>
+            <span className="separator" aria-hidden="true">›</span>
+            <span>{settings.businessName}</span>
+          </nav>
+
+          <section className="tenant-hero animate-in animate-in-d1">
+            <div>
+              <p className="eyebrow">Prenota online</p>
+              <h1>{settings.businessName}</h1>
+              <p className="lede">
+                Scegli il servizio che preferisci, seleziona data e orario,
+                e conferma il tuo appuntamento in pochi click.
+              </p>
+            </div>
+            <div className="hero-badge">
+              <div className="hero-badge-row">
+                <span className="hero-badge-icon" aria-hidden="true">🌍</span>
+                <span>Timezone</span>
+              </div>
+              <strong>{settings.timezone}</strong>
+              <div className="hero-badge-row">
+                <span className="hero-badge-icon" aria-hidden="true">💳</span>
+                <span>Valuta</span>
+              </div>
+              <strong>{settings.currency}</strong>
+            </div>
+          </section>
+
+          <BookingShell
+            settings={settings}
+            services={services}
+            staffMembers={staffMembers}
+            checkoutState={checkoutState}
+            bookingId={bookingId}
+          />
+        </main>
+
+        <footer className="site-footer">
+          <div className="footer-brand">
+            <span className="brand-icon" style={{ width: 28, height: 28, fontSize: '0.6rem', borderRadius: 8 }}>BO</span>
+            {settings.businessName}
+          </div>
+          <span>Powered by Booking OS</span>
+        </footer>
+      </>
     );
   } catch {
     notFound();

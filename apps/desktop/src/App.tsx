@@ -7,43 +7,21 @@ import {
 } from "@booking/core";
 import type { BookingStatus, DashboardSnapshot } from "@booking/core";
 import { startTransition, useDeferredValue, useState, type MouseEvent } from "react";
+import { format } from "date-fns";
+import { it } from "date-fns/locale";
+import { Lock, MailOpen, AlertCircle, Inbox, User, Wallet, Activity, Settings } from "lucide-react";
 
 import { PlanningBoard } from "./planning-board";
+import { Sidebar, type SidebarSection } from "./components/sidebar";
+import { MetricCard } from "./components/metric-card";
+import { DataTable, type ColumnDef } from "./components/data-table";
+import { ToastStack, type ToastMessage, type ToastTone } from "./components/toast-stack";
+import { PageHeader } from "./components/page-header";
+import { StatusBadge, type StatusVariant } from "./components/status-badge";
 
-type Section =
-  | "dashboard"
-  | "planning"
-  | "bookings"
-  | "customers"
-  | "services"
-  | "staff"
-  | "payments"
-  | "notifications"
-  | "settings";
-
-type ToastTone = "success" | "info" | "warning" | "error";
-
-interface ToastMessage {
-  id: string;
-  tone: ToastTone;
-  text: string;
-}
-
-const navigation: Array<{ id: Section; label: string }> = [
-  { id: "dashboard", label: "Dashboard" },
-  { id: "planning", label: "Planning" },
-  { id: "bookings", label: "Prenotazioni" },
-  { id: "customers", label: "Clienti" },
-  { id: "services", label: "Servizi" },
-  { id: "staff", label: "Staff" },
-  { id: "payments", label: "Pagamenti" },
-  { id: "notifications", label: "Notifiche" },
-  { id: "settings", label: "Impostazioni" },
-];
-
-const sectionMeta: Record<Section, { title: string; description: string }> = {
+const sectionMeta: Record<SidebarSection, { title: string; description: string }> = {
   dashboard: {
-    title: "Dashboard operativa",
+    title: "Dashboard",
     description:
       "Controlla la giornata, i flussi di pagamento e lo stato generale del tenant da un unico workspace.",
   },
@@ -59,33 +37,27 @@ const sectionMeta: Record<Section, { title: string; description: string }> = {
   },
   customers: {
     title: "Clienti CRM",
-    description:
-      "Consulta le schede cliente attive e mantieni allineati contatti e storico relazionale.",
+    description: "Consulta le schede cliente attive e mantieni allineati contatti e storico relazionale.",
   },
   services: {
     title: "Catalogo servizi",
-    description:
-      "Monitora durata, pricing e configurazione dei servizi online per il profilo appointments.",
+    description: "Monitora durata, pricing e configurazione dei servizi online per il profilo appointments.",
   },
   staff: {
     title: "Organico e turni",
-    description:
-      "Verifica il team attivo sul tenant e la copertura operativa sulle location abilitate.",
+    description: "Verifica il team attivo sul tenant e la copertura operativa sulle location abilitate.",
   },
   payments: {
     title: "Ledger pagamenti",
-    description:
-      "Segui caparre, incassi manuali e movimenti Stripe con uno stato leggibile per singola prenotazione.",
+    description: "Segui caparre, incassi manuali e movimenti Stripe con uno stato leggibile per singola prenotazione.",
   },
   notifications: {
     title: "Notifiche",
-    description:
-      "Controlla l'invio delle comunicazioni transazionali e individua rapidamente eventuali errori.",
+    description: "Controlla l'invio delle comunicazioni transazionali e individua rapidamente eventuali errori.",
   },
   settings: {
     title: "Impostazioni tenant",
-    description:
-      "Verifica configurazione base, profilo attivo e readiness delle feature pianificate per le prossime fasi.",
+    description: "Verifica configurazione base, profilo attivo e readiness delle feature pianificate per le prossime fasi.",
   },
 };
 
@@ -94,15 +66,6 @@ function currency(cents: number, snapshot: DashboardSnapshot) {
     style: "currency",
     currency: snapshot.tenant.currency,
   }).format(cents / 100);
-}
-
-function formatDateLabel(locale: string) {
-  return new Intl.DateTimeFormat(locale, {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date());
 }
 
 function formatBookingMoment(value: string, locale: string) {
@@ -160,20 +123,46 @@ function getFinancialActionState(booking: DashboardSnapshot["bookings"][number])
   };
 }
 
+function mapStatusToBadge(status: string): StatusVariant {
+  switch (status) {
+    case "confirmed":
+    case "completed":
+    case "paid":
+    case "sent":
+      return "success";
+    case "pending":
+    case "queued":
+      return "warning";
+    case "cancelled":
+    case "no_show":
+    case "failed":
+      return "error";
+    case "refunded":
+      return "info";
+    default:
+      return "neutral";
+  }
+}
+
 export default function App() {
-  const [section, setSection] = useState<Section>("dashboard");
+  const [section, setSection] = useState<SidebarSection>("dashboard");
   const [search, setSearch] = useState("");
   const [snapshot, setSnapshot] = useState(() => getDashboardSnapshot("studio-aurora"));
   const [plannerVersion, setPlannerVersion] = useState(0);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const deferredSearch = useDeferredValue(search.toLowerCase());
 
   function notify(tone: ToastTone, text: string) {
     const id = crypto.randomUUID();
     setToasts((current) => [...current, { id, tone, text }]);
     window.setTimeout(() => {
-      setToasts((current) => current.filter((toast) => toast.id !== id));
-    }, 3200);
+      dismissToast(id);
+    }, 4000);
+  }
+
+  function dismissToast(id: string) {
+    setToasts((current) => current.filter((toast) => toast.id !== id));
   }
 
   function refresh(options?: {
@@ -182,7 +171,6 @@ export default function App() {
     announceNextAppointmentChange?: boolean;
   }) {
     const nextSnapshot = getDashboardSnapshot("studio-aurora");
-
     setSnapshot(nextSnapshot);
 
     if (options?.toast) {
@@ -201,7 +189,6 @@ export default function App() {
 
   function mutateBooking(bookingId: string, status: BookingStatus) {
     const previousSnapshot = snapshot;
-
     updateBookingStatus(bookingId, status);
     refresh({
       previousSnapshot,
@@ -227,424 +214,482 @@ export default function App() {
   }
 
   const filteredBookings = snapshot.bookings.filter((booking) => {
-    if (!deferredSearch) {
-      return true;
-    }
-
+    if (!deferredSearch) return true;
     const haystack = `${booking.customerName} ${booking.serviceName} ${booking.staffName}`.toLowerCase();
     return haystack.includes(deferredSearch);
   });
 
   const activeSection = sectionMeta[section];
-  const todayLabel = formatDateLabel(snapshot.tenant.locale);
   const nextBooking = getNextActiveBooking(snapshot);
+  const unreadNotifications = snapshot.notifications.filter((n) => n.status === "queued").length;
+  const todayBookings = snapshot.bookings.filter(b => b.startsAt.startsWith(format(new Date(), "yyyy-MM-dd")));
+
   const readOnlyNotice = (
-    <div className="section-note">
-      <strong>Sezione in sola lettura</strong>
-      <span>Gestione completa in arrivo nelle prossime iterazioni del desktop.</span>
+    <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4 flex gap-3 text-blue-900 mb-6">
+      <Lock className="w-5 h-5 text-blue-500 shrink-0" />
+      <div>
+        <strong className="font-semibold">Sezione in sola lettura</strong>
+        <span className="text-blue-800/80"> — Gestione completa in arrivo nelle prossime iterazioni del desktop.</span>
+      </div>
     </div>
   );
 
   return (
-    <div className="desktop-shell">
-      <aside className="desktop-sidebar">
-        <div className="brand-block">
-          <div className="brand-mark">BO</div>
-          <div>
-            <p className="eyebrow">Desktop admin</p>
-            <h1>Booking OS</h1>
-            <p>{snapshot.tenant.businessName}</p>
-          </div>
-        </div>
+    <div className="flex h-screen bg-slate-50 w-full overflow-hidden font-sans">
+      <Sidebar
+        activeSection={section}
+        onSectionSelect={(s) => startTransition(() => setSection(s))}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        notificationCount={unreadNotifications}
+      />
 
-        <div className="sidebar-group">
-          <p className="sidebar-label">Workspace</p>
-          <nav className="nav-stack">
-            {navigation.map((item) => (
-              <button
-                key={item.id}
-                className={section === item.id ? "nav-button active" : "nav-button"}
-                type="button"
-                onClick={() =>
-                  startTransition(() => {
-                    setSection(item.id);
-                  })
-                }
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-        </div>
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative">
+        <ToastStack toasts={toasts} onDismiss={dismissToast} />
 
-        <div className="sidebar-meta">
-          <p className="sidebar-label">Tenant</p>
-
-          <div className="profile-card">
-            <span>Profilo attivo</span>
-            <strong>{snapshot.tenant.primaryProfile}</strong>
-            <small>
-              Cloud sync live, booking engine pubblico e depositi Stripe pronti per demo.
-            </small>
-          </div>
-
-          <div className="sidebar-foot">
-            <span>Tenant slug</span>
-            <strong>{snapshot.tenant.slug}</strong>
-            <small>Ruoli owner, manager e operator già predisposti nel modello SaaS.</small>
-          </div>
-        </div>
-      </aside>
-
-      <main className="desktop-main">
-        <div className="toast-stack" aria-live="polite">
-          {toasts.map((toast) => (
-            <div key={toast.id} className={`toast toast-${toast.tone}`}>
-              {toast.text}
-            </div>
-          ))}
-        </div>
-
-        <header className="desktop-header">
-          <div className="header-copy">
-            <p className="eyebrow">Operatività giornaliera</p>
-            <div className="header-title-row">
-              <h2>{activeSection.title}</h2>
-              <span className="section-badge">{snapshot.tenant.primaryProfile}</span>
-            </div>
-            <p className="header-description">{activeSection.description}</p>
-          </div>
-
-          <div className="header-actions">
-            <input
-              aria-label="Cerca"
-              className="search-input"
-              placeholder="Cerca cliente, servizio o staff"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto w-full">
+          {section === "planning" ? (
+            <PlanningBoard
+              key={plannerVersion}
+              snapshot={snapshot}
+              searchQuery={search}
+              onRefresh={refresh}
+              onNotify={notify}
             />
-            <button className="ghost-button" type="button" onClick={handleResetDemo}>
-              Reset demo
-            </button>
-          </div>
-        </header>
-
-        <section className="workspace-strip">
-          <div className="workspace-chips">
-            <span className="workspace-chip strong">{todayLabel}</span>
-            <span className="workspace-chip">{snapshot.tenant.timezone}</span>
-            <span className="workspace-chip">tenant/{snapshot.tenant.slug}</span>
-            <span className="workspace-chip">
-              booking interval {snapshot.tenant.bookingIntervalMinutes} min
-            </span>
-          </div>
-
-          <div className="workspace-status">
-            <span>Prossimo appuntamento</span>
-            {nextBooking ? (
-              <strong>
-                {nextBooking.customerName} ·{" "}
-                {formatBookingMoment(nextBooking.startsAt, snapshot.tenant.locale)}
-              </strong>
-            ) : (
-              <strong>Nessuna prenotazione imminente</strong>
-            )}
-          </div>
-        </section>
-
-        <section className="metric-grid">
-          <article className="metric-card">
-            <span>Prossime prenotazioni</span>
-            <strong>{snapshot.metrics.upcomingBookings}</strong>
-            <small>
-              {nextBooking
-                ? `${snapshot.metrics.upcomingBookings} prossime — ${nextBooking.customerName}, ${formatCompactBookingMoment(nextBooking.startsAt, snapshot.tenant.locale)}`
-                : "Nessun appuntamento attivo nelle prossime ore operative."}
-            </small>
-          </article>
-          <article className="metric-card">
-            <span>Incassato oggi</span>
-            <strong>{currency(snapshot.metrics.revenueTodayCents, snapshot)}</strong>
-            <small>Totale elaborato tra cassa operatore e Stripe.</small>
-          </article>
-          <article className="metric-card">
-            <span>Caparre in attesa</span>
-            <strong>{currency(snapshot.metrics.pendingDepositsCents, snapshot)}</strong>
-            <small>Depositi ancora aperti e da finalizzare sul booking.</small>
-          </article>
-          <article className="metric-card">
-            <span>Clienti CRM</span>
-            <strong>{snapshot.metrics.customerCount}</strong>
-            <small>Schede cliente attive già disponibili nel gestionale.</small>
-          </article>
-        </section>
-
-        {section === "dashboard" ? (
-          <section className="content-grid">
-            <article className="panel-card">
-              <div className="panel-head">
-                <h3>Timeline di oggi</h3>
-                <span>{snapshot.bookings.length} booking caricati</span>
-              </div>
-              <div className="timeline">
-                {snapshot.bookings.map((booking) => (
-                  <div key={booking.id} className="timeline-row">
-                    <strong>{booking.startsAt.slice(11, 16)}</strong>
-                    <div>
-                      <p>{booking.customerName}</p>
-                      <small>
-                        {booking.serviceName} · {booking.staffName}
-                      </small>
+          ) : (
+            <div className="max-w-7xl mx-auto px-6 lg:px-10 py-8 lg:py-10">
+              <PageHeader
+                title={activeSection.title}
+                badges={[
+                  <StatusBadge key="tenant" status={`tenant/${snapshot.tenant.slug}`} variant="neutral" />,
+                  <StatusBadge key="profile" status={snapshot.tenant.primaryProfile} variant="info" />
+                ]}
+                actions={
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Cerca cliente, servizio..."
+                        className="w-64 h-10 pl-4 pr-4 bg-white border border-slate-200 rounded-lg text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                      />
                     </div>
-                    <span className={`pill status-${booking.status}`}>{booking.status}</span>
+                    <button
+                      onClick={handleResetDemo}
+                      className="h-10 px-4 bg-white border border-slate-200 text-slate-700 font-medium text-sm rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-sm whitespace-nowrap"
+                    >
+                      Reset demo
+                    </button>
                   </div>
-                ))}
-              </div>
-            </article>
+                }
+              />
 
-            <article className="panel-card">
-              <div className="panel-head">
-                <h3>Pagamenti</h3>
-                <span>Stripe e manuale</span>
-              </div>
-              <div className="stack-list">
-                {snapshot.payments.map((payment) => (
-                  <div key={payment.id} className="stack-row">
-                    <div>
-                      <p>{payment.provider}</p>
-                      <small>{payment.bookingId}</small>
+              {/* Next Booking Strip */}
+              {section === "dashboard" && (
+                <div className="bg-slate-900 text-white rounded-xl p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                      <AlertCircle className="w-4 h-4 text-blue-400" />
                     </div>
-                    <strong>{currency(payment.amountCents, snapshot)}</strong>
-                    <span className={`pill status-${payment.status}`}>{payment.status}</span>
+                    <div>
+                      <p className="text-sm font-medium text-slate-300">Prossimo appuntamento</p>
+                      {nextBooking ? (
+                        <p className="font-semibold mt-0.5">
+                          {nextBooking.customerName} <span className="text-slate-400 font-normal">· {formatBookingMoment(nextBooking.startsAt, snapshot.tenant.locale)}</span>
+                        </p>
+                      ) : (
+                        <p className="font-semibold text-slate-400 mt-0.5">Nessuna prenotazione imminente</p>
+                      )}
+                    </div>
                   </div>
-                ))}
-              </div>
-            </article>
-          </section>
-        ) : null}
+                  <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+                    <span className="bg-white/10 px-2 py-1 rounded">{snapshot.tenant.timezone}</span>
+                    <span className="bg-white/10 px-2 py-1 rounded">interval {snapshot.tenant.bookingIntervalMinutes}m</span>
+                  </div>
+                </div>
+              )}
 
-        {section === "planning" ? (
-          <PlanningBoard
-            key={plannerVersion}
-            snapshot={snapshot}
-            searchQuery={search}
-            onRefresh={refresh}
-            onNotify={notify}
-          />
-        ) : null}
+              {/* Metric Grid */}
+              {(section === "dashboard" || section === "settings") && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                  <MetricCard
+                    title="Prossime prenotazioni"
+                    value={snapshot.metrics.upcomingBookings}
+                    description={nextBooking ? `Prossima: ${formatCompactBookingMoment(nextBooking.startsAt, snapshot.tenant.locale)}` : "Nessun appuntamento attivo."}
+                  />
+                  <MetricCard
+                    title="Incassato oggi"
+                    value={currency(snapshot.metrics.revenueTodayCents, snapshot)}
+                    description="Elaborato cassa e Stripe."
+                  />
+                  <MetricCard
+                    title="Caparre in attesa"
+                    value={currency(snapshot.metrics.pendingDepositsCents, snapshot)}
+                    description="Depositi ancora aperti."
+                  />
+                  <MetricCard
+                    title="Clienti CRM"
+                    value={snapshot.metrics.customerCount}
+                    description="Schede cliente attive."
+                  />
+                </div>
+              )}
 
-        {section === "bookings" ? (
-          <section className="panel-card">
-            <div className="panel-head">
-              <h3>Prenotazioni operative</h3>
-              <span>{filteredBookings.length} risultati</span>
-            </div>
-            <div className="booking-table">
-              {filteredBookings.map((booking) => {
-                const financialState = getFinancialActionState(booking);
-
-                return (
-                  <article key={booking.id} className="booking-row">
-                    <div>
-                      <p>{booking.customerName}</p>
-                      <small>
-                        {booking.serviceName} · {booking.staffName}
-                      </small>
-                    </div>
-                    <div>
-                      <p>{booking.startsAt.slice(0, 16).replace("T", " ")}</p>
-                      <small>{booking.id}</small>
-                    </div>
-                    <div className="inline-actions">
-                      <span className={`pill status-${booking.status}`}>{booking.status}</span>
-                      <button type="button" onClick={() => mutateBooking(booking.id, "completed")}>
-                        Completa
-                      </button>
-                      <button type="button" onClick={() => mutateBooking(booking.id, "no_show")}>
-                        No-show
-                      </button>
-                      <button
-                        disabled={financialState.collectDisabled}
-                        title={financialState.collectReason}
-                        type="button"
-                        onClick={() => {
-                          try {
-                            markBookingDepositPaid(booking.id, `manual_${booking.id}`);
-                            refresh({
-                              toast: {
-                                tone: "success",
-                                text: `Caparra incassata per ${booking.customerName}.`,
-                              },
-                            });
-                          } catch (error) {
-                            notify(
-                              "error",
-                              error instanceof Error ? error.message : "Non riesco a incassare la caparra.",
-                            );
-                          }
-                        }}
-                      >
-                        Incassa caparra
-                      </button>
-                      <button
-                        disabled={financialState.refundDisabled}
-                        title={financialState.refundReason}
-                        type="button"
-                        onClick={() => {
-                          try {
-                            markBookingRefunded(booking.id);
-                            refresh({
-                              toast: {
-                                tone: "warning",
-                                text: `Caparra rimborsata per ${booking.customerName}.`,
-                              },
-                            });
-                          } catch (error) {
-                            notify(
-                              "error",
-                              error instanceof Error ? error.message : "Non riesco a rimborsare la caparra.",
-                            );
-                          }
-                        }}
-                      >
-                        Rimborso
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
-
-        {section === "customers" ? (
-          <>
-            {readOnlyNotice}
-            <section className="card-grid">
-              {snapshot.customers.map((customer) => (
-                <article key={customer.id} className="panel-card compact">
-                  <h3>{customer.fullName}</h3>
-                  <p>{customer.email}</p>
-                  <small>{customer.phone}</small>
-                </article>
-              ))}
-            </section>
-          </>
-        ) : null}
-
-        {section === "services" ? (
-          <>
-            {readOnlyNotice}
-            <section className="card-grid">
-              {snapshot.services.map((service) => (
-                <article key={service.id} className="panel-card compact">
-                  <h3>{service.name}</h3>
-                  <p>{service.description}</p>
-                  <small>
-                    {service.durationMinutes} min · {currency(service.priceCents, snapshot)}
-                  </small>
-                </article>
-              ))}
-            </section>
-          </>
-        ) : null}
-
-        {section === "staff" ? (
-          <>
-            {readOnlyNotice}
-            <section className="card-grid">
-              {snapshot.staffMembers.map((staff) => (
-                <article key={staff.id} className="panel-card compact">
-                  <h3>{staff.fullName}</h3>
-                  <p>{staff.role}</p>
-                  <small>{staff.locationIds.join(", ")}</small>
-                </article>
-              ))}
-            </section>
-          </>
-        ) : null}
-
-        {section === "payments" ? (
-          <section className="panel-card">
-            <div className="panel-head">
-              <h3>Ledger pagamenti</h3>
-              <span>{snapshot.payments.length} movimenti</span>
-            </div>
-            <div className="stack-list">
-              {snapshot.payments.map((payment) => (
-                <div key={payment.id} className="stack-row">
+              {/* Tab Contents */}
+              {section === "dashboard" && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div>
-                    <p>{payment.bookingId}</p>
-                    <small>{payment.provider}</small>
+                    <div className="flex items-center justify-between mb-4 mt-2">
+                      <h3 className="font-semibold text-slate-900 border-b-2 border-slate-900 pb-1 inline-block">Timeline di oggi</h3>
+                      <span className="text-xs text-slate-500 bg-slate-200/50 px-2 py-1 rounded-md font-medium">{todayBookings.length} booking</span>
+                    </div>
+                    <DataTable
+                      data={todayBookings}
+                      keyExtractor={(b) => b.id}
+                      emptyMessage="Nessun booking per oggi"
+                      columns={[
+                        {
+                          header: "Ora",
+                          className: "w-20 font-medium font-mono text-slate-900",
+                          cell: (b) => b.startsAt.slice(11, 16),
+                        },
+                        {
+                          header: "Cliente",
+                          cell: (b) => (
+                            <div className="flex flex-col">
+                              <span className="font-medium text-slate-900">{b.customerName}</span>
+                              <span className="text-xs text-slate-500">{b.serviceName} · {b.staffName}</span>
+                            </div>
+                          ),
+                        },
+                        {
+                          header: "Stato",
+                          className: "text-right",
+                          cell: (b) => <StatusBadge status={b.status} variant={mapStatusToBadge(b.status)} />,
+                        },
+                      ]}
+                    />
                   </div>
-                  <strong>{currency(payment.amountCents, snapshot)}</strong>
-                  <span className={`pill status-${payment.status}`}>{payment.status}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
 
-        {section === "notifications" ? (
-          <section className="panel-card">
-            <div className="panel-head">
-              <h3>Storico notifiche</h3>
-              <span>{snapshot.notifications.length} eventi</span>
-            </div>
-            <div className="stack-list">
-              {snapshot.notifications.map((notification) => (
-                <div key={notification.id} className="stack-row">
                   <div>
-                    <p>{notification.templateKey}</p>
-                    <small>{notification.recipient}</small>
+                    <div className="flex items-center justify-between mb-4 mt-2">
+                      <h3 className="font-semibold text-slate-900 border-b-2 border-slate-900 pb-1 inline-block">Pagamenti</h3>
+                      <span className="text-xs text-slate-500 bg-slate-200/50 px-2 py-1 rounded-md font-medium">Stripe e manuale</span>
+                    </div>
+                    <DataTable
+                      data={snapshot.payments.slice(0, 10)}
+                      keyExtractor={(p) => p.id}
+                      emptyMessage="Nessun movimento recente"
+                      columns={[
+                        {
+                          header: "Metodo",
+                          cell: (p) => (
+                            <div className="flex flex-col">
+                              <span className="font-medium text-slate-900 uppercase text-xs tracking-wider">{p.provider}</span>
+                              <span className="text-xs text-slate-500 font-mono">{p.bookingId}</span>
+                            </div>
+                          ),
+                        },
+                        {
+                          header: "Importo",
+                          className: "font-medium text-slate-900",
+                          cell: (p) => currency(p.amountCents, snapshot),
+                        },
+                        {
+                          header: "Stato",
+                          className: "text-right",
+                          cell: (p) => <StatusBadge status={p.status} variant={mapStatusToBadge(p.status)} />,
+                        },
+                      ]}
+                    />
                   </div>
-                  <span className={`pill status-${notification.status}`}>{notification.status}</span>
                 </div>
-              ))}
+              )}
+
+              {section === "bookings" && (
+                <div>
+                  <div className="flex items-center justify-between mb-4 mt-2">
+                    <h3 className="font-semibold text-slate-900 border-b-2 border-slate-900 pb-1 inline-block">Prenotazioni operative</h3>
+                    <span className="text-xs text-slate-500 bg-slate-200/50 px-2 py-1 rounded-md font-medium">{filteredBookings.length} risultati</span>
+                  </div>
+                  <DataTable
+                    data={filteredBookings}
+                    keyExtractor={(b) => b.id}
+                    emptyMessage="Nessuna prenotazione trovata"
+                    columns={[
+                      {
+                        header: "Cliente & Servizio",
+                        cell: (b) => (
+                          <div className="flex flex-col py-1">
+                            <span className="font-semibold text-slate-900">{b.customerName}</span>
+                            <span className="text-xs text-slate-500 mt-0.5">{b.serviceName} · {b.staffName}</span>
+                          </div>
+                        ),
+                      },
+                      {
+                        header: "Programmazione",
+                        cell: (b) => (
+                          <div className="flex flex-col py-1">
+                            <span className="font-medium text-slate-900">{b.startsAt.slice(0, 16).replace("T", " ")}</span>
+                            <span className="text-xs font-mono text-slate-400 mt-0.5">{b.id}</span>
+                          </div>
+                        ),
+                      },
+                      {
+                        header: "Stato",
+                        cell: (b) => <StatusBadge status={b.status} variant={mapStatusToBadge(b.status)} />,
+                      },
+                      {
+                        header: "Azioni",
+                        className: "text-right",
+                        cell: (b) => {
+                          const finState = getFinancialActionState(b);
+                          return (
+                            <div className="flex items-center justify-end gap-2 flex-wrap max-w-sm ml-auto">
+                              <button
+                                onClick={() => mutateBooking(b.id, "completed")}
+                                className="px-2.5 py-1.5 bg-white border border-slate-200 text-slate-600 rounded text-xs font-medium hover:bg-slate-50 transition-colors shadow-sm"
+                              >
+                                Completa
+                              </button>
+                              <button
+                                onClick={() => mutateBooking(b.id, "no_show")}
+                                className="px-2.5 py-1.5 bg-white border border-slate-200 text-slate-600 rounded text-xs font-medium hover:bg-slate-50 transition-colors shadow-sm"
+                              >
+                                No-show
+                              </button>
+                              <button
+                                disabled={finState.collectDisabled}
+                                title={finState.collectReason}
+                                onClick={() => {
+                                  try {
+                                    markBookingDepositPaid(b.id, `manual_${b.id}`);
+                                    refresh({ toast: { tone: "success", text: `Caparra incassata per ${b.customerName}.` } });
+                                  } catch (error) {
+                                    notify("error", error instanceof Error ? error.message : "Errore incasso caparra.");
+                                  }
+                                }}
+                                className="px-2.5 py-1.5 bg-white border border-slate-200 text-slate-600 rounded text-xs font-medium hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Incassa
+                              </button>
+                              <button
+                                disabled={finState.refundDisabled}
+                                title={finState.refundReason}
+                                onClick={() => {
+                                  try {
+                                    markBookingRefunded(b.id);
+                                    refresh({ toast: { tone: "info", text: `Caparra rimborsata per ${b.customerName}.` } });
+                                  } catch (error) {
+                                    notify("error", error instanceof Error ? error.message : "Errore rimborso caparra.");
+                                  }
+                                }}
+                                className="px-2.5 py-1.5 bg-white border border-slate-200 text-slate-600 rounded text-xs font-medium hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Rimborso
+                              </button>
+                            </div>
+                          );
+                        },
+                      },
+                    ]}
+                  />
+                </div>
+              )}
+
+              {section === "customers" && (
+                <div>
+                  {readOnlyNotice}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2">
+                    {snapshot.customers.map(c => (
+                      <div key={c.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0 text-slate-500">
+                          <User className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-slate-900 truncate">{c.fullName}</h3>
+                          <p className="text-sm text-slate-500 truncate mt-0.5">{c.email}</p>
+                          <p className="text-xs font-medium text-slate-400 mt-1">{c.phone}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {section === "services" && (
+                <div>
+                  {readOnlyNotice}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2">
+                    {snapshot.services.map(s => (
+                      <div key={s.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                        <h3 className="font-semibold text-slate-900">{s.name}</h3>
+                        <p className="text-sm text-slate-500 mt-2 line-clamp-2">{s.description}</p>
+                        <div className="flex items-center gap-3 mt-4 pt-4 border-t border-slate-100">
+                          <span className="text-xs font-medium bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md">{s.durationMinutes} min</span>
+                          <span className="text-sm font-semibold text-slate-900">{currency(s.priceCents, snapshot)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {section === "staff" && (
+                <div>
+                  {readOnlyNotice}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
+                    {snapshot.staffMembers.map(s => (
+                      <div key={s.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0 text-blue-600 font-bold text-lg">
+                          {s.fullName.charAt(0)}
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-slate-900">{s.fullName}</h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs uppercase tracking-wider font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{s.role}</span>
+                            <span className="text-xs text-slate-500 truncate">{s.locationIds.join(", ")}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {section === "payments" && (
+                <div>
+                  <div className="flex items-center justify-between mb-4 mt-2">
+                    <h3 className="font-semibold text-slate-900 border-b-2 border-slate-900 pb-1 inline-block">Ledger pagamenti</h3>
+                    <span className="text-xs text-slate-500 bg-slate-200/50 px-2 py-1 rounded-md font-medium">{snapshot.payments.length} movimenti</span>
+                  </div>
+                  <DataTable
+                    data={snapshot.payments}
+                    keyExtractor={(p) => p.id}
+                    emptyMessage="Nessun movimento registrato"
+                    columns={[
+                      {
+                        header: "Riferimento booking",
+                        className: "font-mono text-xs",
+                        cell: (p) => p.bookingId,
+                      },
+                      {
+                        header: "Metodo",
+                        cell: (p) => (
+                          <div className="flex items-center gap-2">
+                            <Wallet className="w-4 h-4 text-slate-400" />
+                            <span className="font-medium text-slate-700 capitalize">{p.provider}</span>
+                          </div>
+                        ),
+                      },
+                      {
+                        header: "Importo",
+                        className: "font-semibold text-slate-900",
+                        cell: (p) => currency(p.amountCents, snapshot),
+                      },
+                      {
+                        header: "Stato",
+                        className: "text-right",
+                        cell: (p) => <StatusBadge status={p.status} variant={mapStatusToBadge(p.status)} />,
+                      },
+                    ]}
+                  />
+                </div>
+              )}
+
+              {section === "notifications" && (
+                <div>
+                  <div className="flex items-center justify-between mb-4 mt-2">
+                    <h3 className="font-semibold text-slate-900 border-b-2 border-slate-900 pb-1 inline-block">Storico Notifiche</h3>
+                    <span className="text-xs text-slate-500 bg-slate-200/50 px-2 py-1 rounded-md font-medium">{snapshot.notifications.length} eventi</span>
+                  </div>
+                  <DataTable
+                    data={snapshot.notifications}
+                    keyExtractor={(n) => n.id}
+                    emptyMessage="Nessuna notifica inviata"
+                    columns={[
+                      {
+                        header: "Destinatario",
+                        cell: (n) => (
+                          <div className="flex items-center gap-2">
+                            <MailOpen className="w-4 h-4 text-slate-400" />
+                            <span className="font-medium text-slate-700">{n.recipient}</span>
+                          </div>
+                        ),
+                      },
+                      {
+                        header: "Template",
+                        className: "font-mono text-xs text-slate-500",
+                        cell: (n) => n.templateKey,
+                      },
+                      {
+                        header: "Stato invio",
+                        className: "text-right",
+                        cell: (n) => <StatusBadge status={n.status} variant={mapStatusToBadge(n.status)} />,
+                      },
+                    ]}
+                  />
+                </div>
+              )}
+
+              {section === "settings" && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                    <div className="bg-slate-50 px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+                      <h3 className="font-semibold text-slate-900">Configurazione Base</h3>
+                      <Settings className="w-4 h-4 text-slate-400" />
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      <div className="px-5 py-4 flex justify-between items-center sm:grid sm:grid-cols-2">
+                        <span className="text-sm font-medium text-slate-500">Slug pubblico</span>
+                        <span className="text-sm font-semibold text-slate-900 sm:text-right">{snapshot.tenant.slug}</span>
+                      </div>
+                      <div className="px-5 py-4 flex justify-between items-center sm:grid sm:grid-cols-2">
+                        <span className="text-sm font-medium text-slate-500">Timezone</span>
+                        <span className="text-sm font-semibold text-slate-900 sm:text-right">{snapshot.tenant.timezone}</span>
+                      </div>
+                      <div className="px-5 py-4 flex justify-between items-center sm:grid sm:grid-cols-2">
+                        <span className="text-sm font-medium text-slate-500">Intervallo booking</span>
+                        <span className="text-sm font-semibold text-slate-900 sm:text-right">{snapshot.tenant.bookingIntervalMinutes} minuti</span>
+                      </div>
+                      <div className="px-5 py-4 flex justify-between items-center sm:grid sm:grid-cols-2">
+                        <span className="text-sm font-medium text-slate-500">Lead time minimo</span>
+                        <span className="text-sm font-semibold text-slate-900 sm:text-right">{snapshot.tenant.bookingLeadHours} ore</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                    <div className="bg-slate-50 px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+                      <h3 className="font-semibold text-slate-900">Roadmap Profili e Features</h3>
+                      <Activity className="w-4 h-4 text-slate-400" />
+                    </div>
+                    <div className="p-6">
+                      <p className="text-sm text-slate-500 mb-6 leading-relaxed">I feature flags determinano le sezioni attive per questo tenant in base al piano e al modello di business.</p>
+                      
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-slate-900">Appointments Engine</span>
+                          <StatusBadge status="ready" variant="success" />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-slate-900">Rooms & Locations</span>
+                          <StatusBadge status="planned" variant="neutral" />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-slate-900">Physical Resources</span>
+                          <StatusBadge status="planned" variant="neutral" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          </section>
-        ) : null}
-
-        {section === "settings" ? (
-          <section className="content-grid">
-            <article className="panel-card">
-              <div className="panel-head">
-                <h3>Tenant</h3>
-                <span>Configurazione base</span>
-              </div>
-              <div className="stack-list">
-                <div className="stack-row">
-                  <p>Slug pubblico</p>
-                  <strong>{snapshot.tenant.slug}</strong>
-                </div>
-                <div className="stack-row">
-                  <p>Timezone</p>
-                  <strong>{snapshot.tenant.timezone}</strong>
-                </div>
-                <div className="stack-row">
-                  <p>Intervallo booking</p>
-                  <strong>{snapshot.tenant.bookingIntervalMinutes} minuti</strong>
-                </div>
-                <div className="stack-row">
-                  <p>Lead time minimo</p>
-                  <strong>{snapshot.tenant.bookingLeadHours} ore</strong>
-                </div>
-              </div>
-            </article>
-
-            <article className="panel-card">
-              <div className="panel-head">
-                <h3>Roadmap profili</h3>
-                <span>Feature flag ready</span>
-              </div>
-              <div className="inline-actions">
-                <span className="pill status-confirmed">appointments</span>
-                <span className="pill neutral">rooms</span>
-                <span className="pill neutral">resources</span>
-              </div>
-            </article>
-          </section>
-        ) : null}
+          )}
+        </div>
       </main>
     </div>
   );

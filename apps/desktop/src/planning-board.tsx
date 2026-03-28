@@ -1094,42 +1094,42 @@ export function PlanningBoard({
   }
 
   return (
-    <section className="planning-layout">
-      <div className="planning-stage">
-        <article className="panel-card planning-shell">
-          <div className="planning-shell-head">
-            <div className="planning-shell-title">
-              <p className="eyebrow">Planning operativo</p>
-              <h3>{planningTitle}</h3>
-              <span>{planningSubtitle}</span>
+    <section className="flex flex-col lg:flex-row gap-6 lg:h-full pb-8">
+      <div className="flex-1 min-w-0 flex flex-col h-[800px] lg:h-full">
+        <article className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col h-full ring-1 ring-slate-900/5">
+          <div className="px-5 py-5 border-b border-slate-200 flex flex-col md:flex-row md:items-start md:justify-between gap-4 bg-slate-50/50">
+            <div>
+              <p className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-1 shadow-sm opacity-90 inline-block">Planning operativo</p>
+              <h3 className="text-xl font-bold text-slate-900 tracking-tight">{planningTitle}</h3>
+              <span className="text-sm font-medium text-slate-500 mt-0.5 block">{planningSubtitle}</span>
             </div>
 
-            <div className="planning-shell-actions">
-              <div className="planning-view-stack">
-                <div className="planning-view-switch" aria-label="Vista planning">
+            <div className="flex flex-col items-end gap-3 shrink-0">
+              <div className="flex flex-col items-end gap-1.5">
+                <div className="inline-flex items-center p-1 bg-slate-100/80 rounded-lg border border-slate-200 shadow-inner" aria-label="Vista planning">
                   <button
-                    className={planningView === "day" ? "active" : undefined}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${planningView === "day" ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/50" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"}`}
                     type="button"
                     onClick={() => handleViewChange("day")}
                   >
                     Day
                   </button>
                   <button
-                    className={planningView === "week" ? "active" : undefined}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${planningView === "week" ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/50" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"}`}
                     type="button"
                     onClick={() => handleViewChange("week")}
                   >
                     Week
                   </button>
                   <button
-                    className={planningView === "month" ? "active" : undefined}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${planningView === "month" ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/50" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"}`}
                     type="button"
                     onClick={() => handleViewChange("month")}
                   >
                     Month
                   </button>
                 </div>
-                <small className="planning-view-note">
+                <small className="text-[11px] text-slate-400 font-medium">
                   {planningView === "day"
                     ? "Vista operativa con creazione e riprogrammazione."
                     : planningView === "week"
@@ -1138,9 +1138,9 @@ export function PlanningBoard({
                 </small>
               </div>
 
-              <div className="planning-date-controls">
+              <div className="flex items-center gap-2">
                 <button
-                  className="ghost-button"
+                  className="h-9 px-3 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm"
                   type="button"
                   onClick={() =>
                     handleDateChange(shiftPlanningDateByView(planningDate, planningView, -1))
@@ -1149,13 +1149,13 @@ export function PlanningBoard({
                   {previousLabel}
                 </button>
                 <input
-                  className="search-input compact"
+                  className="h-9 px-3 text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   type="date"
                   value={planningDate}
                   onChange={(event) => handleDateChange(event.target.value)}
                 />
                 <button
-                  className="ghost-button"
+                  className="h-9 px-3 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm"
                   type="button"
                   onClick={() =>
                     handleDateChange(shiftPlanningDateByView(planningDate, planningView, 1))
@@ -1167,18 +1167,16 @@ export function PlanningBoard({
             </div>
           </div>
 
-          <div className="planning-filter-row">
+          <div className="px-5 py-3 border-b border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <label
-              className={[
-                "field",
-                "slim",
-                serviceFlash ? "highlight" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
+              className={`
+                flex items-center gap-3 text-sm font-medium
+                ${serviceFlash ? "text-blue-600 bg-blue-50/50 p-2 -my-2 -ml-2 rounded-lg service-flash" : "text-slate-700"}
+              `}
             >
-              <span>Servizio attivo</span>
+              <span className="shrink-0 text-slate-500 text-xs uppercase tracking-wider font-semibold">Servizio</span>
               <select
+                className="h-9 pl-3 pr-8 w-64 bg-slate-50 border border-slate-200 rounded-lg shadow-sm hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                 disabled={planningView === "day" && panelMode === "reschedule"}
                 value={activeService?.id ?? ""}
                 onChange={(event) => {
@@ -1195,23 +1193,23 @@ export function PlanningBoard({
               </select>
             </label>
 
-            <div className="planning-meta-row">
-              <span className="planning-info-pill strong">{summarySlotsCount} slot disponibili</span>
-              <span className="planning-info-pill">{visibleBookings.length} booking visibili</span>
-              <span className="planning-info-pill">
+            <div className="flex flex-wrap gap-2 text-xs">
+              <span className="px-2.5 py-1 rounded bg-slate-100 text-slate-700 font-semibold">{summarySlotsCount} slot disponibili</span>
+              <span className="px-2.5 py-1 rounded bg-slate-100 text-slate-600">{visibleBookings.length} booking visibili</span>
+              <span className="px-2.5 py-1 rounded bg-slate-100 text-slate-600">
                 {formatMoney(snapshot, summaryOpenDepositCents)} depositi aperti
                 {deferredQuery ? " (filtrato)" : ""}
               </span>
               {planningView !== "day" ? (
-                <span className="planning-info-pill">{activeDaysCount} giorni con attività</span>
+                <span className="px-2.5 py-1 rounded bg-slate-100 text-slate-600">{activeDaysCount} giorni con attività</span>
               ) : null}
               {deferredQuery ? (
-                <span className="planning-info-pill accent">
+                <span className="px-2.5 py-1 rounded bg-blue-50 border border-blue-100 text-blue-700 font-medium shadow-sm">
                   Filtro attivo · {visibleBookings.length} match
                 </span>
               ) : null}
               {planningView === "day" && selectedPlanningBooking ? (
-                <span className="planning-info-pill accent">
+                <span className="px-2.5 py-1 rounded bg-amber-50 border border-amber-200 text-amber-800 font-medium shadow-sm">
                   Riprogrammazione attiva · {selectedPlanningBooking.customerName}
                 </span>
               ) : null}
@@ -1219,14 +1217,20 @@ export function PlanningBoard({
           </div>
 
           {dragState?.phase === "dragging" ? (
-            <div className="status-banner info prominent">
-              Trascina la prenotazione su una fascia libera compatibile e rilascia per confermare
-              lo spostamento.
+            <div className="bg-blue-50 border-y border-blue-200 text-blue-800 px-5 py-3 text-sm font-medium flex items-center justify-center">
+              Trascina la prenotazione su una fascia libera compatibile e rilascia per confermare lo spostamento.
             </div>
           ) : null}
 
           {message ? (
-            <div className={`status-banner ${message.tone} prominent`}>{message.text}</div>
+            <div className={`px-5 py-3 text-sm font-medium border-y flex items-center justify-center ${
+              message.tone === 'error' ? 'bg-rose-50 border-rose-200 text-rose-800' : 
+              message.tone === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
+              message.tone === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-800' :
+              'bg-blue-50 border-blue-200 text-blue-800'
+            }`}>
+              {message.text}
+            </div>
           ) : null}
 
           {planningView === "day" ? (
@@ -1574,43 +1578,43 @@ export function PlanningBoard({
         </article>
       </div>
 
-      <aside className="planning-panel">
-        <article className="panel-card planning-form-card">
+      <aside className="w-full lg:w-80 shrink-0 flex flex-col gap-6 overflow-y-auto pr-1">
+        <article className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 overflow-hidden">
           {planningView !== "day" ? (
-            <div className="planning-idle-state">
-              <div className="section-head">
-                <p className="eyebrow">{planningView === "week" ? "Vista week" : "Vista month"}</p>
-                <h3>
+            <div className="flex flex-col gap-5">
+              <div className="mb-2">
+                <p className="text-[10px] font-bold tracking-wider text-blue-600 uppercase mb-1">{planningView === "week" ? "Vista week" : "Vista month"}</p>
+                <h3 className="text-lg font-bold text-slate-900 tracking-tight leading-snug">
                   {planningView === "week"
                     ? "Panoramica settimanale"
                     : "Calendario mensile operativo"}
                 </h3>
-                <span>
+                <span className="text-sm text-slate-500 mt-1 block leading-relaxed">
                   {planningView === "week"
-                    ? "Usa la week view per confrontare carico, slot e giornate da aprire in dettaglio."
+                    ? "Usa la week view per confrontare calico, slot e giornate da aprire in dettaglio."
                     : "Usa la month view per leggere il volume complessivo e saltare al giorno operativo corretto."}
                 </span>
               </div>
 
-              <div className="planning-selection-box accent">
-                <strong>Data in focus</strong>
-                <p>
+              <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-3 text-sm">
+                <strong className="block text-blue-900 font-semibold mb-0.5">Data in focus</strong>
+                <p className="text-blue-800">
                   {planningView === "week"
                     ? `Settimana ${formatWeekRange(planningDate, snapshot.tenant.locale)}`
                     : formatMonthTitle(planningDate, snapshot.tenant.locale)}
                 </p>
               </div>
 
-              <div className="planning-selection-box">
-                <strong>Servizio attivo</strong>
-                <p>
+              <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-sm">
+                <strong className="block text-slate-700 font-semibold mb-0.5">Servizio attivo</strong>
+                <p className="text-slate-600">
                   {activeService?.name ?? "Nessun servizio"} · {activeService?.durationMinutes ?? 0} min
                 </p>
               </div>
 
-              <div className="planning-selection-box">
-                <strong>Come usarla</strong>
-                <p>
+              <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-sm">
+                <strong className="block text-slate-700 font-semibold mb-0.5">Come usarla</strong>
+                <p className="text-slate-600 leading-relaxed">
                   Clicca un giorno nella griglia per aprire la day view e lavorare subito su buche,
                   riprogrammazioni e conferme operative.
                 </p>
@@ -1619,19 +1623,19 @@ export function PlanningBoard({
           ) : null}
 
           {planningView === "day" && panelMode === "idle" ? (
-            <div className="planning-idle-state">
-              <div className="section-head">
-                <p className="eyebrow">Workspace pronto</p>
-                <h3>Seleziona una fascia o una prenotazione</h3>
-                <span>
+            <div className="flex flex-col gap-5">
+              <div className="mb-2">
+                <p className="text-[10px] font-bold tracking-wider text-emerald-600 uppercase mb-1">Workspace pronto</p>
+                <h3 className="text-lg font-bold text-slate-900 tracking-tight leading-snug">Seleziona una fascia o una prenotazione</h3>
+                <span className="text-sm text-slate-500 mt-1 block leading-relaxed">
                   Clicca una finestra libera per creare una prenotazione oppure una card esistente
                   per entrare in modalità riprogrammazione.
                 </span>
               </div>
 
-              <div className="planning-selection-box">
-                <strong>Come iniziare</strong>
-                <p>
+              <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-sm">
+                <strong className="block text-slate-700 font-semibold mb-1">Come iniziare</strong>
+                <p className="text-slate-600 leading-relaxed">
                   1. Scegli il servizio attivo in alto. 2. Clicca uno slot libero nel planning. 3.
                   Completa i dati cliente nel pannello laterale.
                 </p>
@@ -1640,75 +1644,83 @@ export function PlanningBoard({
           ) : null}
 
           {planningView === "day" && panelMode === "create" ? (
-            <>
-              <div className="section-head">
-                <p className="eyebrow">Nuova prenotazione</p>
-                <h3>Riempi una fascia libera</h3>
-                <span>
+            <div className="flex flex-col gap-4">
+              <div>
+                <p className="text-[10px] font-bold tracking-wider text-blue-600 uppercase mb-1">Nuova prenotazione</p>
+                <h3 className="text-xl font-bold text-slate-900 tracking-tight leading-tight">Riempi una fascia libera</h3>
+                <span className="text-sm text-slate-500 mt-1.5 block leading-relaxed">
                   Compila i dati richiesti per confermare la nuova prenotazione nello slot selezionato.
                 </span>
               </div>
 
-              <div className="planning-selection-box">
-                <strong>Slot selezionato</strong>
+              <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-4 shadow-sm transition-all hover:bg-slate-100/50">
+                <strong className="block text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1.5">Slot selezionato</strong>
                 {selectedSlot ? (
-                  <p>
+                  <p className="text-slate-900 font-semibold text-sm">
                     {formatSlotDateTime(selectedSlot.startsAt, snapshot.tenant.locale)} ·{" "}
-                    {selectedStaff?.fullName}
+                    <span className="text-blue-600">{selectedStaff?.fullName}</span>
                   </p>
                 ) : (
-                  <p>
-                    Seleziona prima una fascia libera nella timeline verticale per scegliere lo start.
+                  <p className="text-slate-400 italic text-sm">
+                    Seleziona prima una fascia libera nella timeline.
                   </p>
                 )}
               </div>
 
               {createValidationText ? (
-                <div className="status-banner error prominent">{createValidationText}</div>
+                <div className="bg-rose-50 border border-rose-100 text-rose-700 rounded-xl p-3.5 text-xs font-semibold shadow-sm flex items-start gap-2 animate-in fade-in slide-in-from-top-1">
+                  <span className="shrink-0 mt-0.5">⚠️</span>
+                  <span>{createValidationText}</span>
+                </div>
               ) : null}
 
-              <div className="field-grid">
-                <label className={formErrors.customerName ? "field invalid" : "field"}>
-                  <span>Nome cliente</span>
+              <div className="grid grid-cols-2 gap-3.5">
+                <label className="flex flex-col gap-1.5">
+                  <span className={`text-[11px] font-bold uppercase tracking-wider ${formErrors.customerName ? "text-rose-600" : "text-slate-500"}`}>Nome cliente</span>
                   <input
-                    aria-invalid={formErrors.customerName}
+                    className={`h-10 px-3 bg-white border rounded-lg text-sm shadow-sm transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 ${formErrors.customerName ? "border-rose-400 ring-4 ring-rose-500/10" : "border-slate-200 hover:border-slate-300"}`}
+                    placeholder="Es. Mario Rossi"
                     value={form.customerName}
                     onChange={(event) =>
                       setForm((current) => ({ ...current, customerName: event.target.value }))
                     }
                   />
-                  {formErrors.customerName ? <small className="field-error">Campo obbligatorio.</small> : null}
+                  {formErrors.customerName ? <small className="text-[10px] text-rose-500 font-bold ml-1">Campo obbligatorio.</small> : null}
                 </label>
 
-                <label className={formErrors.customerPhone ? "field invalid" : "field"}>
-                  <span>Telefono</span>
+                <label className="flex flex-col gap-1.5">
+                  <span className={`text-[11px] font-bold uppercase tracking-wider ${formErrors.customerPhone ? "text-rose-600" : "text-slate-500"}`}>Telefono</span>
                   <input
-                    aria-invalid={formErrors.customerPhone}
+                    className={`h-10 px-3 bg-white border rounded-lg text-sm shadow-sm transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 ${formErrors.customerPhone ? "border-rose-400 ring-4 ring-rose-500/10" : "border-slate-200 hover:border-slate-300"}`}
+                    placeholder="333..."
                     value={form.customerPhone}
                     onChange={(event) =>
                       setForm((current) => ({ ...current, customerPhone: event.target.value }))
                     }
                   />
-                  {formErrors.customerPhone ? <small className="field-error">Campo obbligatorio.</small> : null}
+                  {formErrors.customerPhone ? <small className="text-[10px] text-rose-500 font-bold ml-1">Campo obbligatorio.</small> : null}
                 </label>
               </div>
 
-              <label className={formErrors.customerEmail ? "field invalid" : "field"}>
-                <span>Email</span>
+              <label className="flex flex-col gap-1.5">
+                <span className={`text-[11px] font-bold uppercase tracking-wider ${formErrors.customerEmail ? "text-rose-600" : "text-slate-500"}`}>Email</span>
                 <input
-                  aria-invalid={formErrors.customerEmail}
                   type="email"
+                  className={`h-10 px-3 bg-white border rounded-lg text-sm shadow-sm transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 ${formErrors.customerEmail ? "border-rose-400 ring-4 ring-rose-500/10" : "border-slate-200 hover:border-slate-300"}`}
+                  placeholder="mario@esempio.it"
                   value={form.customerEmail}
                   onChange={(event) =>
                     setForm((current) => ({ ...current, customerEmail: event.target.value }))
                   }
                 />
-                {formErrors.customerEmail ? <small className="field-error">Campo obbligatorio.</small> : null}
+                {formErrors.customerEmail ? <small className="text-[10px] text-rose-500 font-bold ml-1">Campo obbligatorio.</small> : null}
               </label>
 
-              <label className="field">
-                <span>Note operative</span>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Note operative</span>
                 <input
+                  className="h-10 px-3 bg-white border border-slate-200 rounded-lg text-sm shadow-sm transition-all hover:border-slate-300 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500"
+                  placeholder="Note eventuali..."
                   value={form.notes}
                   onChange={(event) =>
                     setForm((current) => ({ ...current, notes: event.target.value }))
@@ -1716,81 +1728,76 @@ export function PlanningBoard({
                 />
               </label>
 
-              <div className="stack-list compact-list">
-                <div className="stack-row">
+              <div className="mt-1 divide-y divide-slate-100 bg-slate-50/50 rounded-xl border border-slate-100 overflow-hidden">
+                <div className="flex justify-between items-center px-4 py-3">
                   <div>
-                    <p>Servizio attivo</p>
-                    <small>Durata e prezzo da applicare</small>
+                    <p className="text-xs font-semibold text-slate-700">Servizio attivo</p>
+                    <small className="text-[10px] text-slate-500 uppercase font-medium">Prezzo standard</small>
                   </div>
-                  <strong>
-                    {activeService?.durationMinutes ?? 0} min ·{" "}
+                  <strong className="text-sm font-bold text-slate-900">
+                    {activeService?.durationMinutes ?? 0}m ·{" "}
                     {activeService ? formatMoney(snapshot, activeService.priceCents) : "-"}
                   </strong>
                 </div>
-                <div className="stack-row">
+                <div className="flex justify-between items-center px-4 py-3">
                   <div>
-                    <p>Caparra standard</p>
-                    <small>Valore richiesto al cliente finale</small>
+                    <p className="text-xs font-semibold text-slate-700">Caparra</p>
+                    <small className="text-[10px] text-slate-500 uppercase font-medium">Iniziale</small>
                   </div>
-                  <strong>
+                  <strong className="text-sm font-bold text-blue-600 text-right">
                     {activeService ? formatMoney(snapshot, getDepositAmountCents(activeService)) : "-"}
                   </strong>
                 </div>
               </div>
 
-              <div className="planning-panel-actions">
+              <div className="mt-2">
                 <button
-                  className="primary-button full"
+                  className="w-full h-11 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-blue-500/20 active:scale-[0.98]"
                   disabled={createActionDisabled}
-                  title={
-                    createActionDisabled
-                      ? "Completa i campi obbligatori e seleziona una fascia valida."
-                      : undefined
-                  }
                   type="button"
                   onClick={handleCreateBooking}
                 >
-                  Crea prenotazione nella fascia selezionata
+                  Conferma Prenotazione
                 </button>
               </div>
-            </>
+            </div>
           ) : null}
 
           {planningView === "day" && panelMode === "reschedule" ? (
-            <>
-              <div className="section-head">
-                <p className="eyebrow">Sposta prenotazione</p>
-                <h3>{selectedPlanningBooking?.customerName}</h3>
-                <span>
+            <div className="flex flex-col gap-5">
+              <div className="mb-2">
+                <p className="text-[10px] font-bold tracking-wider text-amber-600 uppercase mb-1">Sposta prenotazione</p>
+                <h3 className="text-lg font-bold text-slate-900 tracking-tight leading-snug truncate">{selectedPlanningBooking?.customerName}</h3>
+                <span className="text-sm text-slate-500 mt-1 block leading-relaxed">
                   Seleziona una nuova fascia nella timeline per riprogrammare l'appuntamento senza perdere il contesto precedente.
                 </span>
               </div>
 
-              <div className={selectedSlot ? "planning-selection-box" : "planning-selection-box error"}>
-                <strong>Slot selezionato</strong>
+              <div className={`border rounded-lg p-3 text-sm ${selectedSlot ? "bg-slate-50 border-slate-100" : "bg-rose-50 border-rose-200 text-rose-900"}`}>
+                <strong className={`block font-semibold mb-0.5 ${selectedSlot ? "text-slate-700" : "text-rose-900"}`}>Slot selezionato</strong>
                 {selectedSlot ? (
-                  <p>
+                  <p className="text-slate-600">
                     {formatSlotDateTime(selectedSlot.startsAt, snapshot.tenant.locale)} ·{" "}
                     {selectedStaff?.fullName}
                   </p>
                 ) : (
-                  <p>Nessuna fascia selezionata. Clicca nel planning verticale per scegliere lo start.</p>
+                  <p className="italic">Nessuna fascia selezionata. Clicca nel planning verticale per scegliere lo start.</p>
                 )}
               </div>
 
               {selectedPlanningBooking ? (
-                <div className="planning-selection-box accent">
-                  <strong>Prenotazione in modifica</strong>
-                  <p>
+                <div className="bg-amber-50/50 border border-amber-200 rounded-lg p-3 text-sm">
+                  <strong className="block text-amber-900 font-semibold mb-0.5">Prenotazione in modifica</strong>
+                  <p className="text-amber-800">
                     {selectedPlanningBooking.serviceName} ·{" "}
                     {formatTimeRange(selectedPlanningBooking.startsAt, selectedPlanningBooking.endsAt)}
                   </p>
                 </div>
               ) : null}
 
-              <div className="planning-panel-actions">
+              <div className="mt-2 pt-4 border-t border-slate-100 flex flex-col gap-3">
                 <button
-                  className="primary-button full"
+                  className="w-full h-10 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
                   disabled={!selectedSlot}
                   title={!selectedSlot ? "Seleziona prima uno slot valido." : undefined}
                   type="button"
@@ -1798,76 +1805,74 @@ export function PlanningBoard({
                 >
                   Sposta nel nuovo slot
                 </button>
-                <button className="ghost-button full" type="button" onClick={cancelReschedule}>
+                <button className="w-full h-10 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 text-sm font-medium rounded-lg transition-colors shadow-sm" type="button" onClick={cancelReschedule}>
                   Annulla riprogrammazione
                 </button>
               </div>
-            </>
+            </div>
           ) : null}
         </article>
 
-        <article className="panel-card planning-form-card">
-          <div className="panel-head">
-            <h3>
+        <article className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 overflow-hidden">
+          <div className="mb-5">
+            <h3 className="text-lg font-bold text-slate-900 tracking-tight leading-snug">
               {planningView === "day"
                 ? "Sintesi giornata"
                 : planningView === "week"
                   ? "Sintesi settimana"
                   : "Sintesi mese"}
             </h3>
-            <span>
-              {visibleBookings.length} booking in vista
+            <span className="text-xs font-semibold text-slate-400 mt-1 block uppercase tracking-wider">
+              {visibleBookings.length} prenotazioni in vista
               {deferredQuery ? " · filtro attivo" : ""}
             </span>
           </div>
 
-          <div className="stack-list compact-list">
-            <div className="stack-row">
-              <div>
-                <p>Staff attivo</p>
-                <small>
+          <div className="divide-y divide-slate-100/80">
+            <div className="flex justify-between items-center py-3.5">
+              <div className="flex flex-col">
+                <p className="text-sm font-bold text-slate-800">Staff attivo</p>
+                <small className="text-[10px] text-slate-400 font-bold uppercase tracking-tight mt-0.5">
                   {planningView === "day"
-                    ? "Operatori mostrati nella day view"
-                    : "Operatori inclusi nella panoramica corrente"}
+                    ? "In servizio ora"
+                    : "Nel periodo scelto"}
                 </small>
               </div>
-              <strong>{snapshot.staffMembers.length}</strong>
+              <strong className="text-lg font-black text-slate-900 tabular-nums">{snapshot.staffMembers.length}</strong>
             </div>
-            <div className="stack-row">
-              <div>
-                <p>{planningView === "day" ? "Fasce libere" : "Slot compatibili"}</p>
-                <small>
-                  {planningView === "day"
-                    ? "Start compatibili con il servizio attivo"
-                    : "Capacità aggregata nel periodo selezionato"}
+            <div className="flex justify-between items-center py-3.5">
+              <div className="flex flex-col">
+                <p className="text-sm font-bold text-slate-800">{planningView === "day" ? "Fasce libere" : "Slot liberi"}</p>
+                <small className="text-[10px] text-slate-400 font-bold uppercase tracking-tight mt-0.5">
+                  Capacità disponibile
                 </small>
               </div>
-              <strong>{summarySlotsCount}</strong>
+              <strong className="text-lg font-black text-slate-900 tabular-nums">{summarySlotsCount}</strong>
             </div>
-            <div className="stack-row">
-              <div>
-                <p>{planningView === "day" ? "Giorno carico" : "Giorni con attività"}</p>
-                <small>
-                  {planningView === "day"
-                    ? "Booking visibili concentrati sul giorno corrente"
-                    : "Date del periodo con almeno una prenotazione visibile"}
+            <div className="flex justify-between items-center py-3.5">
+              <div className="flex flex-col">
+                <p className="text-sm font-bold text-slate-800">{planningView === "day" ? "Booking oggi" : "Giorni attivi"}</p>
+                <small className="text-[10px] text-slate-400 font-bold uppercase tracking-tight mt-0.5">
+                  Volume operativo
                 </small>
               </div>
-              <strong>{planningView === "day" ? visibleBookings.length : activeDaysCount}</strong>
+              <strong className="text-lg font-black text-slate-900 tabular-nums">{planningView === "day" ? visibleBookings.length : activeDaysCount}</strong>
             </div>
-            <div className="stack-row">
-              <div>
-                <p>{deferredQuery ? "Caparre aperte (filtrato)" : "Caparre aperte"}</p>
-                <small>Importi ancora da chiudere sulle prenotazioni visibili</small>
+            <div className="flex justify-between items-center py-3.5">
+              <div className="flex flex-col">
+                <p className="text-sm font-bold text-slate-800">Caparre aperte</p>
+                <small className="text-[10px] text-slate-400 font-bold uppercase tracking-tight mt-0.5">Importi pendenti</small>
               </div>
-              <strong>{formatMoney(snapshot, summaryOpenDepositCents)}</strong>
+              <strong className="text-base font-black text-blue-600 tabular-nums">{formatMoney(snapshot, summaryOpenDepositCents)}</strong>
             </div>
-            <div className="stack-row">
-              <div>
-                <p>Filtro ricerca</p>
-                <small>Stato del search globale in alto</small>
+            <div className="flex justify-between items-center py-3.5">
+              <div className="flex flex-col">
+                <p className="text-sm font-bold text-slate-800">Filtro ricerca</p>
+                <small className="text-[10px] text-slate-400 font-bold uppercase tracking-tight mt-0.5">Risultati match</small>
               </div>
-              <strong>{deferredQuery ? `${visibleBookings.length} match` : "Nessun filtro"}</strong>
+              <strong className={`text-xs font-bold px-2 py-1 rounded-md ${deferredQuery ? "bg-blue-50 text-blue-700 ring-1 ring-blue-100" : "bg-slate-50 text-slate-400"}`}>
+                {deferredQuery ? `${visibleBookings.length} RISULTATI` : "OFF"}
+              </strong>
             </div>
           </div>
         </article>

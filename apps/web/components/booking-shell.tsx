@@ -45,6 +45,8 @@ export function BookingShell({
   const [confirmation, setConfirmation] = useState<BookingConfirmation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isBusy, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(true);
   const [form, setForm] = useState({
     customerName: "",
     customerEmail: "",
@@ -61,6 +63,7 @@ export function BookingShell({
     }
 
     let cancelled = false;
+    setIsLoadingSlots(true);
 
     async function loadAvailability() {
       setError(null);
@@ -77,6 +80,7 @@ export function BookingShell({
         startTransition(() => {
           setError(payload.error ?? "Impossibile caricare la disponibilità.");
           setSlots([]);
+          setIsLoadingSlots(false);
         });
         return;
       }
@@ -84,6 +88,7 @@ export function BookingShell({
       startTransition(() => {
         setSlots(payload.slots ?? []);
         setSelectedSlot("");
+        setIsLoadingSlots(false);
       });
     }
 
@@ -111,73 +116,86 @@ export function BookingShell({
     }
 
     setError(null);
-    const bookingResponse = await fetch(`/api/public/${settings.slug}/bookings`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        serviceId: selectedService.id,
-        staffMemberId: selectedStaffId || undefined,
-        date: selectedDate,
-        startsAt: selectedSlot,
-        customerName: form.customerName,
-        customerEmail: form.customerEmail,
-        customerPhone: form.customerPhone,
-        notes: form.notes || undefined,
-      }),
-    });
+    setIsSubmitting(true);
 
-    const bookingPayload = (await bookingResponse.json()) as
-      | BookingConfirmation
-      | { error: string };
+    try {
+      const bookingResponse = await fetch(`/api/public/${settings.slug}/bookings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serviceId: selectedService.id,
+          staffMemberId: selectedStaffId || undefined,
+          date: selectedDate,
+          startsAt: selectedSlot,
+          customerName: form.customerName,
+          customerEmail: form.customerEmail,
+          customerPhone: form.customerPhone,
+          notes: form.notes || undefined,
+        }),
+      });
 
-    if (!bookingResponse.ok || "error" in bookingPayload) {
-      setError(
-        "error" in bookingPayload
-          ? bookingPayload.error
-          : "Impossibile creare la prenotazione.",
-      );
-      return;
-    }
+      const bookingPayload = (await bookingResponse.json()) as
+        | BookingConfirmation
+        | { error: string };
 
-    setConfirmation(bookingPayload);
-
-    if (bookingPayload.booking.depositRequiredCents > 0) {
-      const checkoutResponse = await fetch(
-        `/api/public/${settings.slug}/payments/checkout`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ bookingId: bookingPayload.booking.id }),
-        },
-      );
-
-      const checkoutPayload = (await checkoutResponse.json()) as {
-        url?: string;
-        error?: string;
-      };
-
-      if (!checkoutResponse.ok || !checkoutPayload.url) {
-        setError(checkoutPayload.error ?? "Checkout non disponibile.");
+      if (!bookingResponse.ok || "error" in bookingPayload) {
+        setError(
+          "error" in bookingPayload
+            ? bookingPayload.error
+            : "Impossibile creare la prenotazione.",
+        );
+        setIsSubmitting(false);
         return;
       }
 
-      window.location.assign(checkoutPayload.url);
-      return;
+      setConfirmation(bookingPayload);
+
+      if (bookingPayload.booking.depositRequiredCents > 0) {
+        const checkoutResponse = await fetch(
+          `/api/public/${settings.slug}/payments/checkout`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ bookingId: bookingPayload.booking.id }),
+          },
+        );
+
+        const checkoutPayload = (await checkoutResponse.json()) as {
+          url?: string;
+          error?: string;
+        };
+
+        if (!checkoutResponse.ok || !checkoutPayload.url) {
+          setError(checkoutPayload.error ?? "Checkout non disponibile.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        window.location.assign(checkoutPayload.url);
+        return;
+      }
+
+      setIsSubmitting(false);
+    } catch {
+      setError("Si è verificato un errore. Riprova.");
+      setIsSubmitting(false);
     }
   }
 
   return (
-    <section className="booking-layout">
+    <section className="booking-layout animate-in animate-in-d2">
       <div className="booking-main">
         {checkoutState === "success" ? (
           <div className="status-banner success">
-            Caparra registrata con successo per la prenotazione `{bookingId}`.
+            <span className="status-icon" aria-hidden="true">✓</span>
+            Caparra registrata con successo per la prenotazione {bookingId}.
           </div>
         ) : null}
 
         {checkoutState === "cancelled" ? (
           <div className="status-banner warning">
-            Il checkout e&apos; stato annullato. La prenotazione resta creata con pagamento in attesa.
+            <span className="status-icon" aria-hidden="true">⚠</span>
+            Il checkout è stato annullato. La prenotazione resta creata con pagamento in attesa.
           </div>
         ) : null}
 
@@ -203,7 +221,7 @@ export function BookingShell({
 
           <div className="field-grid">
             <label className="field">
-              <span>Data</span>
+              <span>📅 Data</span>
               <input
                 type="date"
                 value={selectedDate}
@@ -212,7 +230,7 @@ export function BookingShell({
             </label>
 
             <label className="field">
-              <span>Preferenza staff</span>
+              <span>👤 Preferenza staff</span>
               <select
                 value={selectedStaffId}
                 onChange={(event) => setSelectedStaffId(event.target.value)}
@@ -228,27 +246,33 @@ export function BookingShell({
           </div>
 
           <div className="field">
-            <span>Orario</span>
-            <div className="slot-grid">
-              {isBusy ? <p className="slot-hint">Aggiorno la disponibilita&apos;...</p> : null}
-              {!isBusy && filteredSlots.length === 0 ? (
-                <p className="slot-hint">Nessuno slot libero per i filtri selezionati.</p>
-              ) : null}
-              {filteredSlots.map((slot) => (
-                <button
-                  key={`${slot.staffMemberId}-${slot.startsAt}`}
-                  className={selectedSlot === slot.startsAt ? "slot-button active" : "slot-button"}
-                  type="button"
-                  onClick={() => {
-                    setSelectedSlot(slot.startsAt);
-                    setSelectedStaffId(slot.staffMemberId);
-                  }}
-                >
-                  <span>{slot.startsAt.slice(11, 16)}</span>
-                  <small>{slot.staffName}</small>
-                </button>
-              ))}
-            </div>
+            <span>🕐 Orario disponibile</span>
+            {isLoadingSlots || isBusy ? (
+              <div className="skeleton-grid">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="skeleton-slot" />
+                ))}
+              </div>
+            ) : filteredSlots.length === 0 ? (
+              <p className="slot-hint">Nessuno slot libero per i filtri selezionati.</p>
+            ) : (
+              <div className="slot-grid">
+                {filteredSlots.map((slot) => (
+                  <button
+                    key={`${slot.staffMemberId}-${slot.startsAt}`}
+                    className={selectedSlot === slot.startsAt ? "slot-button active" : "slot-button"}
+                    type="button"
+                    onClick={() => {
+                      setSelectedSlot(slot.startsAt);
+                      setSelectedStaffId(slot.staffMemberId);
+                    }}
+                  >
+                    <span>{slot.startsAt.slice(11, 16)}</span>
+                    <small>{slot.staffName}</small>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="section-head compact">
@@ -260,6 +284,7 @@ export function BookingShell({
               <span>Nome e cognome</span>
               <input
                 required
+                placeholder="Mario Rossi"
                 value={form.customerName}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, customerName: event.target.value }))
@@ -271,6 +296,7 @@ export function BookingShell({
               <input
                 required
                 type="email"
+                placeholder="mario@example.com"
                 value={form.customerEmail}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, customerEmail: event.target.value }))
@@ -284,6 +310,7 @@ export function BookingShell({
               <span>Telefono</span>
               <input
                 required
+                placeholder="+39 333 000 1111"
                 value={form.customerPhone}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, customerPhone: event.target.value }))
@@ -291,8 +318,9 @@ export function BookingShell({
               />
             </label>
             <label className="field">
-              <span>Note</span>
+              <span>Note (opzionale)</span>
               <input
+                placeholder="Preferenze, richieste particolari..."
                 value={form.notes}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, notes: event.target.value }))
@@ -301,10 +329,26 @@ export function BookingShell({
             </label>
           </div>
 
-          {error ? <div className="status-banner error">{error}</div> : null}
+          {error ? (
+            <div className="status-banner error">
+              <span className="status-icon" aria-hidden="true">✕</span>
+              {error}
+            </div>
+          ) : null}
 
-          <button className="primary-button full" type="submit">
-            Conferma e vai al checkout
+          <button
+            className="primary-button full"
+            type="submit"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <span className="btn-spinner" aria-hidden="true" />
+                Elaborazione in corso...
+              </>
+            ) : (
+              <>Conferma e vai al checkout</>
+            )}
           </button>
         </form>
       </div>
@@ -345,7 +389,7 @@ export function BookingShell({
         </div>
 
         <div className="summary-card accent">
-          <p className="eyebrow">Operativita&apos;</p>
+          <p className="eyebrow">Operatività</p>
           <h3>Setup pronto per il backoffice</h3>
           <p>
             Ogni booking generato qui entra nel core condiviso, pronto per essere letto dal
@@ -355,6 +399,7 @@ export function BookingShell({
 
         {confirmation ? (
           <div className="summary-card confirmation">
+            <div className="success-check" aria-hidden="true">✓</div>
             <p className="eyebrow">Prenotazione creata</p>
             <h3>{confirmation.customer.fullName}</h3>
             <p>ID booking: {confirmation.booking.id}</p>

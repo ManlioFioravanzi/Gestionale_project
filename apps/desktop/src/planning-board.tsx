@@ -1094,9 +1094,9 @@ export function PlanningBoard({
   }
 
   return (
-    <section className="flex flex-col lg:flex-row gap-6 lg:h-full pb-8">
-      <div className="flex-1 min-w-0 flex flex-col h-[800px] lg:h-full">
-        <article className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col h-full ring-1 ring-slate-900/5">
+    <section className="flex min-h-0 flex-col gap-6 pb-8 lg:h-full lg:flex-row">
+      <div className="flex h-[800px] min-h-0 min-w-0 flex-1 flex-col lg:h-full">
+        <article className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-900/5">
           <div className="px-5 py-5 border-b border-slate-200 flex flex-col md:flex-row md:items-start md:justify-between gap-4 bg-slate-50/50">
             <div>
               <p className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-1 shadow-sm opacity-90 inline-block">Planning operativo</p>
@@ -1578,8 +1578,8 @@ export function PlanningBoard({
         </article>
       </div>
 
-      <aside className="w-full lg:w-80 shrink-0 flex flex-col gap-6 overflow-y-auto pr-1">
-        <article className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 overflow-hidden">
+      <aside className="planning-sidebar flex w-full shrink-0 flex-col gap-6 pr-1 lg:w-80 lg:min-h-0 lg:overflow-y-auto">
+        <article className="shrink-0 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           {planningView !== "day" ? (
             <div className="flex flex-col gap-5">
               <div className="mb-2">
@@ -1813,7 +1813,7 @@ export function PlanningBoard({
           ) : null}
         </article>
 
-        <article className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 overflow-hidden">
+        <article className="shrink-0 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5">
             <h3 className="text-lg font-bold text-slate-900 tracking-tight leading-snug">
               {planningView === "day"

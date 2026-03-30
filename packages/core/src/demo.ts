@@ -64,6 +64,24 @@ interface DemoState {
   auditEvents: AuditEvent[];
 }
 
+export interface CreateStaffMemberInput {
+  slug: string;
+  fullName: string;
+  role: StaffMember["role"];
+  locationIds: string[];
+  accentColor?: string;
+  profile?: StaffMember["profile"];
+  active?: boolean;
+}
+
+export interface UpdateStaffMemberInput {
+  fullName?: string;
+  role?: StaffMember["role"];
+  locationIds?: string[];
+  accentColor?: string;
+  active?: boolean;
+}
+
 function isoAt(date: Date, hours: number, minutes = 0) {
   return formatISO(set(date, { hours, minutes, seconds: 0, milliseconds: 0 }));
 }
@@ -533,6 +551,112 @@ function ensureTenant(slug: string) {
 
 export function resetDemoState() {
   state = createInitialState();
+}
+
+function assertValidStaffName(fullName: string) {
+  if (!fullName.trim()) {
+    throw new Error("Nome staff obbligatorio.");
+  }
+}
+
+function assertValidLocationIds(locationIds: string[]) {
+  if (locationIds.length === 0) {
+    throw new Error("Seleziona almeno una location.");
+  }
+
+  for (const locationId of locationIds) {
+    const exists = state.locations.some((location) => location.id === locationId);
+    if (!exists) {
+      throw new Error(`Location ${locationId} non trovata.`);
+    }
+  }
+}
+
+export function createStaffMember(input: CreateStaffMemberInput) {
+  const tenant = ensureTenant(input.slug);
+  const normalizedName = input.fullName.trim();
+  const normalizedLocationIds = [...new Set(input.locationIds.map((entry) => entry.trim()).filter(Boolean))];
+
+  assertValidStaffName(normalizedName);
+  assertValidLocationIds(normalizedLocationIds);
+
+  const nextStaff: StaffMember = {
+    id: `staff_${crypto.randomUUID().slice(0, 8)}`,
+    tenantId: tenant.id,
+    fullName: normalizedName,
+    role: input.role,
+    profile: input.profile ?? tenant.primaryProfile,
+    locationIds: normalizedLocationIds,
+    accentColor: input.accentColor?.trim() || "#1d4ed8",
+    active: input.active ?? true,
+  };
+
+  state.staffMembers.push(nextStaff);
+  return structuredClone(nextStaff);
+}
+
+export function updateStaffMember(staffId: string, input: UpdateStaffMemberInput) {
+  const staffMember = state.staffMembers.find((entry) => entry.id === staffId);
+
+  if (!staffMember) {
+    throw new Error(`Staff ${staffId} non trovato.`);
+  }
+
+  if (input.fullName !== undefined) {
+    assertValidStaffName(input.fullName);
+    staffMember.fullName = input.fullName.trim();
+  }
+
+  if (input.locationIds !== undefined) {
+    const normalizedLocationIds = [...new Set(input.locationIds.map((entry) => entry.trim()).filter(Boolean))];
+    assertValidLocationIds(normalizedLocationIds);
+    staffMember.locationIds = normalizedLocationIds;
+  }
+
+  if (input.role !== undefined) {
+    staffMember.role = input.role;
+  }
+
+  if (input.accentColor !== undefined) {
+    staffMember.accentColor = input.accentColor.trim() || staffMember.accentColor;
+  }
+
+  if (input.active !== undefined) {
+    staffMember.active = input.active;
+  }
+
+  return structuredClone(staffMember);
+}
+
+export function deleteStaffMember(staffId: string) {
+  const staffIndex = state.staffMembers.findIndex((entry) => entry.id === staffId);
+
+  if (staffIndex === -1) {
+    throw new Error(`Staff ${staffId} non trovato.`);
+  }
+
+  if (state.staffMembers.length === 1) {
+    throw new Error("Non puoi eliminare l'ultimo membro staff.");
+  }
+
+  const fallbackStaff = state.staffMembers.find((entry) => entry.id !== staffId);
+  if (!fallbackStaff) {
+    throw new Error("Nessun membro staff disponibile per la riassegnazione.");
+  }
+
+  const reassignedAt = new Date().toISOString();
+  for (const booking of state.bookings) {
+    if (booking.staffMemberId === staffId) {
+      booking.staffMemberId = fallbackStaff.id;
+      booking.updatedAt = reassignedAt;
+    }
+  }
+
+  const [removed] = state.staffMembers.splice(staffIndex, 1);
+  state.availabilityRules = state.availabilityRules.filter((rule) => rule.staffMemberId !== staffId);
+  state.blackouts = state.blackouts.filter((blackout) => blackout.staffMemberId !== staffId);
+
+  return structuredClone(removed);
 }
 
 export function getPublicSettings(slug: string): PublicSettings {

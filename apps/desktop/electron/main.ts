@@ -7,7 +7,7 @@ function createWindow() {
     height: 980,
     minWidth: 1100,
     minHeight: 760,
-    title: "Booking OS Desktop",
+    title: "BeeHive Desktop",
     backgroundColor: "#f2e6d8",
   });
 

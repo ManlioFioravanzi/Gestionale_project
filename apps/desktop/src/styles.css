@@ -370,6 +370,32 @@
   height: 100%;
 }
 
+.planning-sidebar {
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.planning-sidebar::-webkit-scrollbar {
+  width: 10px;
+}
+
+.planning-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.planning-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.planning-sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.55);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
 .planning-overview-scroll {
   overflow: auto;
   flex: 1;

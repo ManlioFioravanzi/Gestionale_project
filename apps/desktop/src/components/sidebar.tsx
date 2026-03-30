@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  ArrowLeftCircle,
   Bell,
   Calendar,
   ChevronLeft,
@@ -7,12 +8,14 @@ import {
   ClipboardList,
   CreditCard,
   LayoutDashboard,
+  Mail,
   Scissors,
   Settings,
   UserCog,
   Users,
 } from "lucide-react";
 import type { MouseEvent } from "react";
+import { BeeHiveLogo } from "./beehive-logo";
 
 export type SidebarSection =
   | "dashboard"
@@ -23,11 +26,13 @@ export type SidebarSection =
   | "staff"
   | "payments"
   | "notifications"
+  | "email"
   | "settings";
 
 interface SidebarProps {
   activeSection: SidebarSection;
   onSectionSelect: (section: SidebarSection) => void;
+  onReturnToProfileSelection: () => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
   notificationCount: number;
@@ -42,12 +47,14 @@ const navItems: Array<{ id: SidebarSection; label: string; icon: React.ElementTy
   { id: "staff", label: "Staff", icon: UserCog },
   { id: "payments", label: "Pagamenti", icon: CreditCard },
   { id: "notifications", label: "Notifiche", icon: Bell },
+  { id: "email", label: "Email", icon: Mail },
   { id: "settings", label: "Impostazioni", icon: Settings },
 ];
 
 export function Sidebar({
   activeSection,
   onSectionSelect,
+  onReturnToProfileSelection,
   collapsed,
   onToggleCollapse,
   notificationCount,
@@ -62,8 +69,8 @@ export function Sidebar({
       <div className="flex-1 overflow-y-auto py-6 flex flex-col gap-6 no-scrollbar">
         {/* Branding */}
         <div className="px-4 flex items-center justify-center min-h-[48px]">
-          <div className="bg-white/10 w-10 h-10 rounded shadow-sm text-sm font-bold flex items-center justify-center shrink-0">
-            BO
+          <div className="bg-white/10 w-10 h-10 rounded shadow-sm flex items-center justify-center shrink-0 overflow-hidden">
+            <BeeHiveLogo size={24} />
           </div>
           <AnimatePresence>
             {!collapsed && (
@@ -74,7 +81,7 @@ export function Sidebar({
                 className="ml-3 overflow-hidden whitespace-nowrap"
               >
                 <div className="text-[10px] font-bold tracking-wider text-slate-400">DESKTOP ADMIN</div>
-                <div className="font-semibold text-lg leading-tight mt-0.5 tracking-tight">Booking OS</div>
+                <div className="font-semibold text-lg leading-tight mt-0.5 tracking-tight">BeeHive</div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -141,6 +148,41 @@ export function Sidebar({
             );
           })}
         </nav>
+
+        <div className="px-3">
+          <div className="mb-3 border-t border-white/10" />
+          <button
+            onClick={onReturnToProfileSelection}
+            className="relative flex h-10 w-full items-center rounded-lg px-2 text-amber-200 transition-colors group hover:bg-white/5 hover:text-white"
+            title={collapsed ? "Torna alla selezione profilo" : undefined}
+          >
+            <AnimatePresence mode="popLayout">
+              {collapsed ? (
+                <motion.div
+                  key="return-icon"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.15 }}
+                  className="flex h-6 w-6 items-center justify-center shrink-0"
+                >
+                  <ArrowLeftCircle className="h-[18px] w-[18px]" strokeWidth={2} />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="return-label"
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: "auto" }}
+                  exit={{ opacity: 0, width: 0 }}
+                  className="flex items-center gap-3 overflow-hidden whitespace-nowrap px-2 text-left"
+                >
+                  <ArrowLeftCircle className="h-[18px] w-[18px] shrink-0" strokeWidth={2} />
+                  <span className="text-sm font-medium">Selezione profilo</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </button>
+        </div>
       </div>
 
       {/* Footer Toggle */}

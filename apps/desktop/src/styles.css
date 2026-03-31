@@ -25,6 +25,61 @@
   --color-danger-soft: rgba(220, 38, 38, 0.08);
 }
 
+:root {
+  --app-shell-bg: #f8fafc;
+  --app-foreground: #0f172a;
+  --app-content-text: #0b1426;
+  --app-content-muted: rgba(11, 20, 38, 0.72);
+  --app-content-heading: #0b1426;
+  --app-surface: #ffffff;
+  --app-surface-muted: #f8fafc;
+  --app-surface-hover: #f1f5f9;
+  --app-border: #e2e8f0;
+  --app-border-strong: #cbd5e1;
+  --app-sidebar-bg: #0f172a;
+  --app-sidebar-text: #f8fbff;
+  --app-sidebar-muted: #94a3b8;
+  --app-sidebar-hover-bg: rgba(248, 251, 255, 0.12);
+  --app-sidebar-active-bg: rgba(248, 251, 255, 0.2);
+  --app-sidebar-border: rgba(248, 251, 255, 0.18);
+  --app-sidebar-surface: rgba(248, 251, 255, 0.12);
+  --app-sidebar-notification-text: #ffffff;
+  --app-accent: #2563eb;
+  --app-accent-readable: #1d4ed8;
+  --app-accent-soft: rgba(37, 99, 235, 0.12);
+  --app-accent-soft-strong: rgba(37, 99, 235, 0.18);
+  --app-accent-soft-text: #0b1426;
+  --app-accent-contrast: #ffffff;
+  --app-secondary: #f59e0b;
+  --app-secondary-readable: #7a4f05;
+  --app-secondary-soft: rgba(245, 158, 11, 0.16);
+  --app-secondary-soft-text: #0b1426;
+  --app-secondary-contrast: #5b3a00;
+  --app-top-strip-bg: #0f172a;
+  --app-top-strip-text: #ffffff;
+  --app-top-strip-muted: #94a3b8;
+  --app-primary-button-bg: #2563eb;
+  --app-primary-button-hover: #1e40af;
+  --app-primary-button-text: #ffffff;
+  --app-primary-button-disabled-bg: #94a3b8;
+  --app-primary-button-disabled-text: #0b1426;
+  --app-status-success-bg: #dcfce7;
+  --app-status-success-text: #14532d;
+  --app-status-success-border: #a7f3d0;
+  --app-status-warning-bg: rgba(245, 158, 11, 0.18);
+  --app-status-warning-text: #78350f;
+  --app-status-warning-border: rgba(245, 158, 11, 0.35);
+  --app-status-error-bg: #ffe4e6;
+  --app-status-error-text: #881337;
+  --app-status-error-border: #fecdd3;
+  --app-status-info-bg: rgba(37, 99, 235, 0.18);
+  --app-status-info-text: #1e3a8a;
+  --app-status-info-border: rgba(37, 99, 235, 0.35);
+  --app-status-neutral-bg: #f1f5f9;
+  --app-status-neutral-text: #334155;
+  --app-status-neutral-border: #cbd5e1;
+}
+
 @layer base {
   * {
     box-sizing: border-box;
@@ -39,8 +94,9 @@
   body {
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    background: #f8fafc;
-    color: #0f172a;
+    background: var(--app-shell-bg);
+    color: var(--app-foreground);
+    transition: background 150ms ease, color 150ms ease;
   }
 
   button, input, select, textarea {
@@ -51,6 +107,105 @@
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
   }
+}
+
+body[data-app-shell="desktop"] [class*="text-blue-"] {
+  color: var(--app-accent-readable) !important;
+}
+
+body[data-app-shell="desktop"] [class*="bg-blue-50"] {
+  background-color: var(--app-accent-soft) !important;
+  color: var(--app-accent-soft-text) !important;
+}
+
+body[data-app-shell="desktop"] [class*="bg-blue-100"] {
+  background-color: var(--app-accent-soft-strong) !important;
+  color: var(--app-accent-soft-text) !important;
+}
+
+body[data-app-shell="desktop"] [class*="bg-blue-500"],
+body[data-app-shell="desktop"] [class*="bg-blue-600"],
+body[data-app-shell="desktop"] [class*="bg-blue-700"],
+body[data-app-shell="desktop"] [class*="bg-blue-900"] {
+  background-color: var(--app-accent) !important;
+  color: var(--app-accent-contrast) !important;
+}
+
+body[data-app-shell="desktop"] [class*="border-blue-"] {
+  border-color: color-mix(in srgb, var(--app-accent) 30%, transparent) !important;
+}
+
+body[data-app-shell="desktop"] [class*="text-amber-"],
+body[data-app-shell="desktop"] [class*="text-orange-"] {
+  color: var(--app-secondary-readable) !important;
+}
+
+body[data-app-shell="desktop"] [class*="bg-amber-50"],
+body[data-app-shell="desktop"] [class*="bg-orange-50"] {
+  background-color: var(--app-secondary-soft) !important;
+  color: var(--app-secondary-soft-text) !important;
+}
+
+body[data-app-shell="desktop"] [class*="bg-amber-100"],
+body[data-app-shell="desktop"] [class*="bg-orange-100"] {
+  background-color: color-mix(in srgb, var(--app-secondary) 26%, transparent) !important;
+  color: var(--app-secondary-soft-text) !important;
+}
+
+body[data-app-shell="desktop"] [class*="border-amber-"],
+body[data-app-shell="desktop"] [class*="border-orange-"] {
+  border-color: color-mix(in srgb, var(--app-secondary) 34%, transparent) !important;
+}
+
+body[data-app-shell="desktop"] [data-theme-surface="sidebar"] {
+  transition: background 150ms ease, color 150ms ease;
+}
+
+body[data-app-shell="desktop"] .app-sidebar-nav-btn {
+  color: var(--app-sidebar-muted);
+}
+
+body[data-app-shell="desktop"] .app-sidebar-nav-btn[data-active="true"] {
+  color: var(--app-sidebar-text);
+  background-color: var(--app-sidebar-active-bg);
+}
+
+body[data-app-shell="desktop"] .app-sidebar-nav-btn:hover {
+  color: var(--app-sidebar-text);
+  background-color: var(--app-sidebar-hover-bg);
+}
+
+body[data-app-shell="desktop"] .app-sidebar-return-btn {
+  color: var(--app-sidebar-text);
+}
+
+body[data-app-shell="desktop"] .app-sidebar-toggle-btn {
+  color: var(--app-sidebar-muted);
+}
+
+body[data-app-shell="desktop"] .app-sidebar-return-btn:hover,
+body[data-app-shell="desktop"] .app-sidebar-toggle-btn:hover {
+  color: var(--app-sidebar-text);
+  background-color: var(--app-sidebar-hover-bg);
+}
+
+body[data-app-shell="desktop"] .bg-slate-900 {
+  background-color: var(--app-primary-button-bg) !important;
+  color: var(--app-primary-button-text) !important;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+body[data-app-shell="desktop"] .hover\:bg-slate-800:hover {
+  background-color: var(--app-primary-button-hover) !important;
+}
+
+body[data-app-shell="desktop"] .disabled\:bg-slate-300:disabled {
+  background-color: var(--app-primary-button-disabled-bg) !important;
+  color: var(--app-primary-button-disabled-text) !important;
+}
+
+body[data-app-shell="desktop"] .theme-status-badge {
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
 }
 
 /* ── Planning board pixel-based styles ─────────────────── */
@@ -161,8 +316,8 @@
   left: 6px;
   right: 6px;
   border-radius: 8px;
-  border: 1px dashed rgba(37, 99, 235, 0.2);
-  background: rgba(37, 99, 235, 0.03);
+  border: 1px dashed color-mix(in srgb, var(--app-accent) 24%, transparent);
+  background: color-mix(in srgb, var(--app-accent) 8%, transparent);
   pointer-events: none;
 }
 
@@ -172,7 +327,7 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #2563eb;
+  color: var(--app-accent);
   font-size: 0.75rem;
 }
 
@@ -202,7 +357,7 @@
 }
 
 .planning-booking.selected {
-  box-shadow: 0 0 0 2px #2563eb, 0 6px 20px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 0 0 2px var(--app-accent), 0 6px 20px rgba(15, 23, 42, 0.18);
 }
 
 .planning-booking.muted {
@@ -218,15 +373,15 @@
   left: 6px;
   right: 6px;
   border-radius: 8px;
-  border: 2px solid #2563eb;
-  background: rgba(37, 99, 235, 0.08);
+  border: 2px solid var(--app-accent);
+  background: color-mix(in srgb, var(--app-accent) 12%, transparent);
   z-index: 1;
   pointer-events: none;
   display: flex;
   flex-direction: column;
   padding: 6px 10px;
   font-size: 0.75rem;
-  color: #1e40af;
+  color: color-mix(in srgb, var(--app-accent) 88%, black);
 }
 
 .planning-selection-kicker {

@@ -26,24 +26,10 @@ import {
   subMonths,
 } from "date-fns";
 import { useState } from "react";
+import type { AppLanguage } from "../i18n";
+import type { DesktopTheme } from "../theme";
 
 type PerformancePeriod = "last7" | "last30" | "thisMonth" | "lastMonth";
-
-const periodOptions: Array<{ id: PerformancePeriod; label: string }> = [
-  { id: "last7", label: "Ultimi 7 giorni" },
-  { id: "last30", label: "Ultimi 30 giorni" },
-  { id: "thisMonth", label: "Questo mese" },
-  { id: "lastMonth", label: "Mese scorso" },
-];
-
-const chartPalette = {
-  navy: "#1e3a8a",
-  blue: "#2563eb",
-  amber: "#f59e0b",
-  green: "#16a34a",
-  orange: "#f97316",
-  slate: "#64748b",
-};
 
 function getPeriodRange(period: PerformancePeriod) {
   const now = new Date();
@@ -81,13 +67,87 @@ function weekdayIndex(date: Date) {
   return day === 0 ? 6 : day - 1;
 }
 
-export function DashboardPerformance({ snapshot }: { snapshot: DashboardSnapshot }) {
+export function DashboardPerformance({
+  snapshot,
+  language,
+  locale,
+  theme,
+}: {
+  snapshot: DashboardSnapshot;
+  language: AppLanguage;
+  locale: string;
+  theme: DesktopTheme;
+}) {
   const [period, setPeriod] = useState<PerformancePeriod>("last30");
-  const currencyFormatter = new Intl.NumberFormat(snapshot.tenant.locale, {
+  const chartPalette = theme.chartPalette;
+  const formatTooltipValue = (value: unknown) => Array.isArray(value) ? value[0] ?? 0 : value ?? 0;
+  const currencyFormatter = new Intl.NumberFormat(locale, {
     style: "currency",
     currency: snapshot.tenant.currency,
     maximumFractionDigits: 2,
   });
+  const copy =
+    language === "en"
+      ? {
+          period: "Period",
+          headerTitle: "Performance",
+          headerBody: "Operational and financial trends for the selected period.",
+          revenueTitle: "Revenue trend",
+          revenueBody: "Daily revenue in currency",
+          bookingsTitle: "Bookings by weekday",
+          bookingsBody: "How bookings are distributed across the week",
+          depositsTitle: "Deposit conversion",
+          depositsBody: "Paid vs pending vs refunded",
+          methodsTitle: "Payment methods",
+          methodsBody: "Processed volume in the selected period",
+          volume: "Volume",
+          dateLabel: (label: string) => `Date ${label}`,
+          methodLabel: (label: string) => `Method ${label}`,
+          periods: {
+            last7: "Last 7 days",
+            last30: "Last 30 days",
+            thisMonth: "This month",
+            lastMonth: "Last month",
+          },
+          weekdayLabels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+          depositLabels: {
+            paid: "Paid",
+            pending: "Pending",
+            refunded: "Refunded",
+          },
+          bookingsTooltip: (value: unknown) => [`${formatTooltipValue(value)} bookings`, "Volume"],
+          manualLabel: "Manual",
+        }
+      : {
+          period: "Periodo",
+          headerTitle: "Performance",
+          headerBody: "Monitoraggio trend operativi e finanziari per il periodo selezionato.",
+          revenueTitle: "Andamento fatturato",
+          revenueBody: "Incassato giornaliero in euro",
+          bookingsTitle: "Prenotazioni per giorno della settimana",
+          bookingsBody: "Distribuzione dei picchi operativi",
+          depositsTitle: "Tasso di conversione caparre",
+          depositsBody: "Pagate vs in attesa vs rimborsate",
+          methodsTitle: "Metodi di pagamento",
+          methodsBody: "Volume transato nel periodo",
+          volume: "Volume",
+          dateLabel: (label: string) => `Data ${label}`,
+          methodLabel: (label: string) => `Metodo ${label}`,
+          periods: {
+            last7: "Ultimi 7 giorni",
+            last30: "Ultimi 30 giorni",
+            thisMonth: "Questo mese",
+            lastMonth: "Mese scorso",
+          },
+          weekdayLabels: ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"],
+          depositLabels: {
+            paid: "Pagate",
+            pending: "In attesa",
+            refunded: "Rimborsate",
+          },
+          bookingsTooltip: (value: unknown) => [`${formatTooltipValue(value)} prenotazioni`, "Volume"],
+          manualLabel: "Manuale",
+        };
 
   const range = getPeriodRange(period);
   const rangeDays = eachDayOfInterval({
@@ -130,12 +190,10 @@ export function DashboardPerformance({ snapshot }: { snapshot: DashboardSnapshot
   for (const booking of filteredBookings) {
     weekdayCounts[weekdayIndex(parseISO(booking.startsAt))] += 1;
   }
-  const bookingsByWeekdayData = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"].map(
-    (day, index) => ({
-      day,
-      bookings: weekdayCounts[index],
-    }),
-  );
+  const bookingsByWeekdayData = copy.weekdayLabels.map((day, index) => ({
+    day,
+    bookings: weekdayCounts[index],
+  }));
 
   let paidDeposits = 0;
   let pendingDeposits = 0;
@@ -158,9 +216,9 @@ export function DashboardPerformance({ snapshot }: { snapshot: DashboardSnapshot
   const totalDeposits = paidDeposits + pendingDeposits + refundedDeposits;
 
   const depositsData = [
-    { name: "Pagate", value: paidDeposits, color: chartPalette.green },
-    { name: "In attesa", value: pendingDeposits, color: chartPalette.amber },
-    { name: "Rimborsate", value: refundedDeposits, color: chartPalette.orange },
+    { name: copy.depositLabels.paid, value: paidDeposits, color: chartPalette.green },
+    { name: copy.depositLabels.pending, value: pendingDeposits, color: chartPalette.amber },
+    { name: copy.depositLabels.refunded, value: refundedDeposits, color: chartPalette.orange },
   ];
 
   let stripeVolumeCents = 0;
@@ -175,29 +233,27 @@ export function DashboardPerformance({ snapshot }: { snapshot: DashboardSnapshot
 
   const paymentMethodData = [
     { method: "Stripe", amount: stripeVolumeCents / 100, color: chartPalette.navy },
-    { method: "Manuale", amount: manualVolumeCents / 100, color: chartPalette.blue },
+    { method: copy.manualLabel, amount: manualVolumeCents / 100, color: chartPalette.blue },
   ];
 
   return (
     <section className="mb-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-slate-900">Performance</h3>
-          <p className="mt-1 text-sm text-slate-500">
-            Monitoraggio trend operativi e finanziari per il periodo selezionato.
-          </p>
+          <h3 className="text-lg font-semibold text-slate-900">{copy.headerTitle}</h3>
+          <p className="mt-1 text-sm text-slate-500">{copy.headerBody}</p>
         </div>
 
         <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-          Periodo
+          {copy.period}
           <select
             value={period}
             onChange={(event) => setPeriod(event.target.value as PerformancePeriod)}
             className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold normal-case tracking-normal text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           >
-            {periodOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
+            {(["last7", "last30", "thisMonth", "lastMonth"] as PerformancePeriod[]).map((option) => (
+              <option key={option} value={option}>
+                {copy.periods[option]}
               </option>
             ))}
           </select>
@@ -206,8 +262,8 @@ export function DashboardPerformance({ snapshot }: { snapshot: DashboardSnapshot
 
       <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
         <article className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-          <h4 className="text-sm font-semibold text-slate-900">Andamento fatturato</h4>
-          <p className="mt-1 text-xs text-slate-500">Incassato giornaliero in euro</p>
+          <h4 className="text-sm font-semibold text-slate-900">{copy.revenueTitle}</h4>
+          <p className="mt-1 text-xs text-slate-500">{copy.revenueBody}</p>
           <div className="mt-3 h-[260px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={revenueData} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
@@ -226,7 +282,7 @@ export function DashboardPerformance({ snapshot }: { snapshot: DashboardSnapshot
                 />
                 <Tooltip
                   formatter={(value) => currencyFormatter.format(Number(value))}
-                  labelFormatter={(label) => `Data ${label}`}
+                  labelFormatter={(label) => copy.dateLabel(String(label))}
                   contentStyle={{
                     borderRadius: 10,
                     borderColor: "#cbd5e1",
@@ -247,8 +303,8 @@ export function DashboardPerformance({ snapshot }: { snapshot: DashboardSnapshot
         </article>
 
         <article className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-          <h4 className="text-sm font-semibold text-slate-900">Prenotazioni per giorno della settimana</h4>
-          <p className="mt-1 text-xs text-slate-500">Distribuzione dei picchi operativi</p>
+          <h4 className="text-sm font-semibold text-slate-900">{copy.bookingsTitle}</h4>
+          <p className="mt-1 text-xs text-slate-500">{copy.bookingsBody}</p>
           <div className="mt-3 h-[260px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={bookingsByWeekdayData} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
@@ -256,7 +312,7 @@ export function DashboardPerformance({ snapshot }: { snapshot: DashboardSnapshot
                 <XAxis dataKey="day" tick={{ fill: chartPalette.slate, fontSize: 12 }} />
                 <YAxis allowDecimals={false} tick={{ fill: chartPalette.slate, fontSize: 12 }} width={30} />
                 <Tooltip
-                  formatter={(value) => [`${value} prenotazioni`, "Volume"]}
+                  formatter={(value) => copy.bookingsTooltip(value ?? 0)}
                   contentStyle={{
                     borderRadius: 10,
                     borderColor: "#cbd5e1",
@@ -272,8 +328,8 @@ export function DashboardPerformance({ snapshot }: { snapshot: DashboardSnapshot
 
       <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         <article className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-          <h4 className="text-sm font-semibold text-slate-900">Tasso di conversione caparre</h4>
-          <p className="mt-1 text-xs text-slate-500">Pagate vs in attesa vs rimborsate</p>
+          <h4 className="text-sm font-semibold text-slate-900">{copy.depositsTitle}</h4>
+          <p className="mt-1 text-xs text-slate-500">{copy.depositsBody}</p>
           <div className="mt-3 h-[230px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -308,8 +364,8 @@ export function DashboardPerformance({ snapshot }: { snapshot: DashboardSnapshot
         </article>
 
         <article className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-          <h4 className="text-sm font-semibold text-slate-900">Metodi di pagamento</h4>
-          <p className="mt-1 text-xs text-slate-500">Volume transato nel periodo</p>
+          <h4 className="text-sm font-semibold text-slate-900">{copy.methodsTitle}</h4>
+          <p className="mt-1 text-xs text-slate-500">{copy.methodsBody}</p>
           <div className="mt-3 h-[230px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -327,6 +383,7 @@ export function DashboardPerformance({ snapshot }: { snapshot: DashboardSnapshot
                 />
                 <Tooltip
                   formatter={(value) => currencyFormatter.format(Number(value))}
+                  labelFormatter={(label) => copy.methodLabel(String(label))}
                   contentStyle={{
                     borderRadius: 10,
                     borderColor: "#cbd5e1",

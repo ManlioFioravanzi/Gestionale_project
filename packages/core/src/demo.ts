@@ -96,6 +96,22 @@ function getNextOperationalDate() {
   return candidate;
 }
 
+function shiftOperationalDays(date: Date, offset: number) {
+  let candidate = new Date(date);
+  const step = offset >= 0 ? 1 : -1;
+  let remaining = Math.abs(offset);
+
+  while (remaining > 0) {
+    candidate = addDays(candidate, step);
+
+    if (candidate.getDay() !== 0) {
+      remaining -= 1;
+    }
+  }
+
+  return candidate;
+}
+
 function createInitialState(): DemoState {
   const seededNow = new Date().toISOString();
   const tenant: Tenant = {
@@ -143,6 +159,26 @@ function createInitialState(): DemoState {
       locationIds: [locations[0].id],
       accentColor: "#0f6c5c",
       active: true,
+    },
+    {
+      id: "staff_sofia",
+      tenantId: tenant.id,
+      fullName: "Sofia Conti",
+      role: "operator",
+      profile: "appointments",
+      locationIds: [locations[0].id],
+      accentColor: "#5b6ee1",
+      active: true,
+    },
+    {
+      id: "staff_davide",
+      tenantId: tenant.id,
+      fullName: "Davide Ferri",
+      role: "operator",
+      profile: "appointments",
+      locationIds: [locations[0].id],
+      accentColor: "#8b5cf6",
+      active: false,
     },
   ];
 
@@ -192,6 +228,36 @@ function createInitialState(): DemoState {
       depositValue: 1000,
       onlineEnabled: true,
     },
+    {
+      id: "svc_balayage_premium",
+      tenantId: tenant.id,
+      profile: "appointments",
+      locationId: locations[0].id,
+      name: "Balayage Premium",
+      description: "Schiariture personalizzate, tonalizzazione e styling glow.",
+      durationMinutes: 150,
+      bufferBeforeMinutes: 0,
+      bufferAfterMinutes: 20,
+      priceCents: 16500,
+      depositType: "percentage",
+      depositValue: 40,
+      onlineEnabled: true,
+    },
+    {
+      id: "svc_keratin_recovery",
+      tenantId: tenant.id,
+      profile: "appointments",
+      locationId: locations[0].id,
+      name: "Keratin Recovery",
+      description: "Trattamento ricostruttivo anti-crespo con finish setoso.",
+      durationMinutes: 90,
+      bufferBeforeMinutes: 0,
+      bufferAfterMinutes: 10,
+      priceCents: 8500,
+      depositType: "percentage",
+      depositValue: 35,
+      onlineEnabled: true,
+    },
   ];
 
   const customers: Customer[] = [
@@ -201,6 +267,7 @@ function createInitialState(): DemoState {
       fullName: "Chiara Greco",
       email: "chiara@example.com",
       phone: "+39 333 000 1111",
+      notes: "Preferisce prodotti senza profumazione intensa.",
     },
     {
       id: "cus_luca",
@@ -209,150 +276,458 @@ function createInitialState(): DemoState {
       email: "luca@example.com",
       phone: "+39 333 222 3333",
     },
+    {
+      id: "cus_alessia",
+      tenantId: tenant.id,
+      fullName: "Alessia Ferraro",
+      email: "alessia@example.com",
+      phone: "+39 333 401 1100",
+      notes: "Prima visita dal sito, interessata a un percorso colore stagionale.",
+    },
+    {
+      id: "cus_tommaso",
+      tenantId: tenant.id,
+      fullName: "Tommaso Rinaldi",
+      email: "tommaso@example.com",
+      phone: "+39 333 401 2200",
+    },
+    {
+      id: "cus_martina",
+      tenantId: tenant.id,
+      fullName: "Martina Villa",
+      email: "martina@example.com",
+      phone: "+39 333 401 3300",
+      notes: "Cliente premium, richiede sempre foto prima/dopo.",
+    },
+    {
+      id: "cus_federico",
+      tenantId: tenant.id,
+      fullName: "Federico Neri",
+      email: "federico@example.com",
+      phone: "+39 333 401 4400",
+    },
+    {
+      id: "cus_beatrice",
+      tenantId: tenant.id,
+      fullName: "Beatrice Lombardi",
+      email: "beatrice@example.com",
+      phone: "+39 333 401 5500",
+    },
+    {
+      id: "cus_valentina",
+      tenantId: tenant.id,
+      fullName: "Valentina Gallo",
+      email: "valentina@example.com",
+      phone: "+39 333 401 6600",
+    },
+    {
+      id: "cus_andrea",
+      tenantId: tenant.id,
+      fullName: "Andrea Fontana",
+      email: "andrea@example.com",
+      phone: "+39 333 401 7700",
+      notes: "Prenota spesso in pausa pranzo, preferisce promemoria email.",
+    },
+    {
+      id: "cus_elisa",
+      tenantId: tenant.id,
+      fullName: "Elisa Moretti",
+      email: "elisa@example.com",
+      phone: "+39 333 401 8800",
+    },
+    {
+      id: "cus_riccardo",
+      tenantId: tenant.id,
+      fullName: "Riccardo Esposito",
+      email: "riccardo@example.com",
+      phone: "+39 333 401 9900",
+    },
+    {
+      id: "cus_camilla",
+      tenantId: tenant.id,
+      fullName: "Camilla De Luca",
+      email: "camilla@example.com",
+      phone: "+39 333 402 0001",
+      notes: "Segue piano home-care e acquista spesso trattamenti retail.",
+    },
   ];
+
+  const staffScheduleById: Record<string, { startMinutes: number; endMinutes: number }> = {
+    staff_elena: { startMinutes: 9 * 60, endMinutes: 18 * 60 },
+    staff_marta: { startMinutes: 10 * 60, endMinutes: 19 * 60 },
+    staff_sofia: { startMinutes: 11 * 60, endMinutes: 19 * 60 },
+  };
 
   const availabilityRules: AvailabilityRule[] = [];
   for (const weekday of [1, 2, 3, 4, 5, 6]) {
-    for (const staff of staffMembers) {
+    for (const staff of staffMembers.filter((entry) => entry.active)) {
+      const schedule = staffScheduleById[staff.id] ?? {
+        startMinutes: 9 * 60,
+        endMinutes: 18 * 60,
+      };
+
       availabilityRules.push({
         id: `rule_${staff.id}_${weekday}`,
         tenantId: tenant.id,
         locationId: locations[0].id,
         profile: "appointments",
         weekday,
-        startMinutes: 9 * 60,
-        endMinutes: 18 * 60,
+        startMinutes: schedule.startMinutes,
+        endMinutes: schedule.endMinutes,
         staffMemberId: staff.id,
       });
     }
   }
 
   const baseDate = getNextOperationalDate();
-  const baseDateValue = formatISO(baseDate, { representation: "date" });
+  const currentOperationalDate = shiftOperationalDays(baseDate, -1);
+  const recentOperationalDate = shiftOperationalDays(baseDate, -2);
+  const historicOperationalDate = shiftOperationalDays(baseDate, -3);
+  const archivedOperationalDate = shiftOperationalDays(baseDate, -4);
+  const showcaseOperationalDate = shiftOperationalDays(baseDate, 1);
+  const premiumOperationalDate = shiftOperationalDays(baseDate, 2);
   const blackouts: Blackout[] = [
     {
       id: "blackout_training",
       tenantId: tenant.id,
       locationId: locations[0].id,
       profile: "appointments",
-      date: baseDateValue,
+      date: formatISO(baseDate, { representation: "date" }),
       startMinutes: 13 * 60,
       endMinutes: 14 * 60,
       staffMemberId: "staff_marta",
       reason: "Formazione interna",
     },
-  ];
-
-  const bookingOneStart = isoAt(baseDate, 10);
-  const bookingOneEnd = isoAt(baseDate, 11);
-  const bookingTwoStart = isoAt(baseDate, 15);
-  const bookingTwoEnd = isoAt(baseDate, 17);
-
-  const bookings: Booking[] = [
     {
-      id: "book_001",
+      id: "blackout_shooting",
       tenantId: tenant.id,
       locationId: locations[0].id,
-      customerId: customers[0].id,
-      staffMemberId: staffMembers[0].id,
       profile: "appointments",
+      date: formatISO(showcaseOperationalDate, { representation: "date" }),
+      startMinutes: 16 * 60,
+      endMinutes: 17 * 60,
+      staffMemberId: "staff_elena",
+      reason: "Shooting contenuti social",
+    },
+    {
+      id: "blackout_maintenance",
+      tenantId: tenant.id,
+      locationId: locations[0].id,
+      profile: "appointments",
+      date: formatISO(premiumOperationalDate, { representation: "date" }),
+      startMinutes: 12 * 60,
+      endMinutes: 13 * 60,
+      reason: "Sanificazione area colore",
+    },
+  ];
+
+  const servicesById = new Map(services.map((service) => [service.id, service]));
+  const customersById = new Map(customers.map((customer) => [customer.id, customer]));
+
+  const seededAppointments: Array<{
+    id: string;
+    customerId: string;
+    staffMemberId: string;
+    serviceId: string;
+    date: Date;
+    startHours: number;
+    startMinutes?: number;
+    status: Booking["status"];
+    paymentStatus: Payment["status"];
+    channel: Booking["channel"];
+    provider: Payment["provider"];
+    notes?: string;
+    paymentIntentId?: string;
+    checkoutSessionId?: string;
+    paymentUpdatedAt?: string;
+    notificationStatus?: NotificationLog["status"];
+    notificationTemplateKey?: string;
+    notificationSentAt?: string;
+  }> = [
+    {
+      id: "book_001",
+      customerId: "cus_chiara",
+      staffMemberId: "staff_elena",
+      serviceId: "svc_signature_cut",
+      date: baseDate,
+      startHours: 10,
       status: "confirmed",
       paymentStatus: "paid",
       channel: "web",
-      startsAt: bookingOneStart,
-      endsAt: bookingOneEnd,
+      provider: "stripe",
       notes: "Preferisce prodotti senza profumazione intensa.",
-      depositRequiredCents: 1650,
-      depositCollectedCents: 1650,
-      createdAt: bookingOneStart,
-      updatedAt: bookingOneStart,
+      paymentIntentId: "pi_demo_001",
+      paymentUpdatedAt: seededNow,
+      notificationStatus: "sent",
+      notificationTemplateKey: "booking-confirmed",
+      notificationSentAt: seededNow,
     },
     {
       id: "book_002",
-      tenantId: tenant.id,
-      locationId: locations[0].id,
-      customerId: customers[1].id,
-      staffMemberId: staffMembers[1].id,
-      profile: "appointments",
+      customerId: "cus_luca",
+      staffMemberId: "staff_marta",
+      serviceId: "svc_color_ritual",
+      date: baseDate,
+      startHours: 15,
       status: "confirmed",
       paymentStatus: "pending",
       channel: "admin",
-      startsAt: bookingTwoStart,
-      endsAt: bookingTwoEnd,
-      notes: "Ritoccare tonalità ramata.",
-      depositRequiredCents: 4600,
-      depositCollectedCents: 0,
-      createdAt: bookingTwoStart,
-      updatedAt: bookingTwoStart,
-    },
-  ];
-
-  const bookingItems: BookingItem[] = [
-    {
-      id: "item_001",
-      bookingId: bookings[0].id,
-      serviceId: services[0].id,
-      durationMinutes: services[0].durationMinutes,
-      bufferBeforeMinutes: services[0].bufferBeforeMinutes,
-      bufferAfterMinutes: services[0].bufferAfterMinutes,
-      unitPriceCents: services[0].priceCents,
-    },
-    {
-      id: "item_002",
-      bookingId: bookings[1].id,
-      serviceId: services[1].id,
-      durationMinutes: services[1].durationMinutes,
-      bufferBeforeMinutes: services[1].bufferBeforeMinutes,
-      bufferAfterMinutes: services[1].bufferAfterMinutes,
-      unitPriceCents: services[1].priceCents,
-    },
-  ];
-
-  const payments: Payment[] = [
-    {
-      id: "pay_001",
-      tenantId: tenant.id,
-      bookingId: bookings[0].id,
-      provider: "stripe",
-      status: "paid",
-      amountCents: 1650,
-      paymentIntentId: "pi_demo_001",
-      createdAt: seededNow,
-      updatedAt: seededNow,
-    },
-    {
-      id: "pay_002",
-      tenantId: tenant.id,
-      bookingId: bookings[1].id,
       provider: "manual",
-      status: "pending",
-      amountCents: 4600,
-      createdAt: bookingTwoStart,
-      updatedAt: bookingTwoStart,
+      notes: "Ritoccare tonalità ramata.",
+      notificationStatus: "queued",
+      notificationTemplateKey: "booking-confirmed",
+    },
+    {
+      id: "book_003",
+      customerId: "cus_alessia",
+      staffMemberId: "staff_sofia",
+      serviceId: "svc_quick_consultation",
+      date: baseDate,
+      startHours: 11,
+      startMinutes: 30,
+      status: "confirmed",
+      paymentStatus: "paid",
+      channel: "web",
+      provider: "stripe",
+      notes: "Prima visita, valutare percorso trattamenti primavera.",
+      paymentIntentId: "pi_demo_003",
+      paymentUpdatedAt: seededNow,
+      notificationStatus: "sent",
+      notificationTemplateKey: "booking-confirmed",
+      notificationSentAt: seededNow,
+    },
+    {
+      id: "book_004",
+      customerId: "cus_martina",
+      staffMemberId: "staff_elena",
+      serviceId: "svc_balayage_premium",
+      date: showcaseOperationalDate,
+      startHours: 9,
+      startMinutes: 30,
+      status: "confirmed",
+      paymentStatus: "pending",
+      channel: "web",
+      provider: "stripe",
+      notes: "Balayage soft con focus luminosità frontale.",
+      notificationStatus: "queued",
+      notificationTemplateKey: "booking-confirmed",
+    },
+    {
+      id: "book_005",
+      customerId: "cus_tommaso",
+      staffMemberId: "staff_sofia",
+      serviceId: "svc_keratin_recovery",
+      date: showcaseOperationalDate,
+      startHours: 13,
+      startMinutes: 30,
+      status: "confirmed",
+      paymentStatus: "pending",
+      channel: "admin",
+      provider: "manual",
+      notes: "Capelli sensibilizzati, usare formula delicata.",
+      notificationStatus: "queued",
+      notificationTemplateKey: "booking-confirmed",
+    },
+    {
+      id: "book_006",
+      customerId: "cus_federico",
+      staffMemberId: "staff_marta",
+      serviceId: "svc_signature_cut",
+      date: showcaseOperationalDate,
+      startHours: 17,
+      status: "confirmed",
+      paymentStatus: "pending",
+      channel: "admin",
+      provider: "manual",
+      notes: "Cliente business, preferisce uscire entro le 18:15.",
+      notificationStatus: "queued",
+      notificationTemplateKey: "booking-confirmed",
+    },
+    {
+      id: "book_007",
+      customerId: "cus_beatrice",
+      staffMemberId: "staff_elena",
+      serviceId: "svc_color_ritual",
+      date: premiumOperationalDate,
+      startHours: 14,
+      status: "confirmed",
+      paymentStatus: "pending",
+      channel: "web",
+      provider: "stripe",
+      notes: "Richiesta foto finale per piano contenuti social.",
+      notificationStatus: "queued",
+      notificationTemplateKey: "booking-confirmed",
+    },
+    {
+      id: "book_008",
+      customerId: "cus_valentina",
+      staffMemberId: "staff_elena",
+      serviceId: "svc_signature_cut",
+      date: recentOperationalDate,
+      startHours: 9,
+      status: "completed",
+      paymentStatus: "paid",
+      channel: "admin",
+      provider: "manual",
+      notes: "Rientro post viaggio, styling naturale.",
+      paymentUpdatedAt: isoAt(recentOperationalDate, 10, 20),
+      notificationStatus: "sent",
+      notificationTemplateKey: "booking-completed",
+      notificationSentAt: isoAt(recentOperationalDate, 10, 25),
+    },
+    {
+      id: "book_009",
+      customerId: "cus_andrea",
+      staffMemberId: "staff_marta",
+      serviceId: "svc_color_ritual",
+      date: currentOperationalDate,
+      startHours: 11,
+      startMinutes: 30,
+      status: "completed",
+      paymentStatus: "paid",
+      channel: "web",
+      provider: "stripe",
+      notes: "Aggiunta piega extra volume in check-out.",
+      paymentIntentId: "pi_demo_009",
+      paymentUpdatedAt: isoAt(currentOperationalDate, 13, 45),
+      notificationStatus: "sent",
+      notificationTemplateKey: "booking-completed",
+      notificationSentAt: isoAt(currentOperationalDate, 13, 50),
+    },
+    {
+      id: "book_010",
+      customerId: "cus_elisa",
+      staffMemberId: "staff_sofia",
+      serviceId: "svc_quick_consultation",
+      date: historicOperationalDate,
+      startHours: 16,
+      status: "no_show",
+      paymentStatus: "pending",
+      channel: "admin",
+      provider: "manual",
+      notes: "Non ha risposto al reminder del giorno precedente.",
+      notificationStatus: "failed",
+      notificationTemplateKey: "booking-reminder",
+    },
+    {
+      id: "book_011",
+      customerId: "cus_riccardo",
+      staffMemberId: "staff_elena",
+      serviceId: "svc_keratin_recovery",
+      date: archivedOperationalDate,
+      startHours: 14,
+      status: "cancelled",
+      paymentStatus: "refunded",
+      channel: "web",
+      provider: "stripe",
+      notes: "Annullata per sensibilità cutanea, caparra restituita.",
+      paymentIntentId: "pi_demo_011",
+      paymentUpdatedAt: isoAt(archivedOperationalDate, 12, 15),
+      notificationStatus: "sent",
+      notificationTemplateKey: "booking-cancelled",
+      notificationSentAt: isoAt(archivedOperationalDate, 12, 20),
+    },
+    {
+      id: "book_012",
+      customerId: "cus_camilla",
+      staffMemberId: "staff_marta",
+      serviceId: "svc_balayage_premium",
+      date: shiftOperationalDays(baseDate, -6),
+      startHours: 10,
+      status: "completed",
+      paymentStatus: "paid",
+      channel: "web",
+      provider: "stripe",
+      notes: "Prima seduta premium, upsell maschera ricostruzione.",
+      paymentIntentId: "pi_demo_012",
+      paymentUpdatedAt: isoAt(shiftOperationalDays(baseDate, -6), 13, 15),
+      notificationStatus: "sent",
+      notificationTemplateKey: "booking-completed",
+      notificationSentAt: isoAt(shiftOperationalDays(baseDate, -6), 13, 20),
     },
   ];
 
-  const notifications: NotificationLog[] = [
-    {
-      id: "notif_001",
+  const bookings: Booking[] = [];
+  const bookingItems: BookingItem[] = [];
+  const payments: Payment[] = [];
+  const notifications: NotificationLog[] = [];
+
+  for (const appointment of seededAppointments) {
+    const service = servicesById.get(appointment.serviceId);
+    const customer = customersById.get(appointment.customerId);
+
+    if (!service || !customer) {
+      throw new Error(`Invalid seeded appointment ${appointment.id}`);
+    }
+
+    const startsAt = isoAt(appointment.date, appointment.startHours, appointment.startMinutes ?? 0);
+    const endsAt = formatISO(addMinutes(parseISO(startsAt), service.durationMinutes));
+    const isFutureBooking = parseISO(startsAt) > new Date();
+    const createdAt = isFutureBooking ? seededNow : startsAt;
+    const updatedAt = appointment.paymentUpdatedAt ?? createdAt;
+    const depositRequiredCents = calculateDepositCents(service, tenant);
+    const notificationStatus =
+      appointment.notificationStatus ??
+      (appointment.paymentStatus === "pending" ? "queued" : "sent");
+
+    bookings.push({
+      id: appointment.id,
       tenantId: tenant.id,
-      bookingId: bookings[0].id,
-      channel: "email",
-      recipient: customers[0].email,
-      status: "sent",
-      templateKey: "booking-confirmed",
-      sentAt: seededNow,
-    },
-    {
-      id: "notif_002",
+      locationId: service.locationId,
+      customerId: customer.id,
+      staffMemberId: appointment.staffMemberId,
+      profile: service.profile,
+      status: appointment.status,
+      paymentStatus: appointment.paymentStatus,
+      channel: appointment.channel,
+      startsAt,
+      endsAt,
+      notes: appointment.notes,
+      depositRequiredCents,
+      depositCollectedCents: appointment.paymentStatus === "paid" ? depositRequiredCents : 0,
+      createdAt,
+      updatedAt,
+    });
+
+    bookingItems.push({
+      id: `item_${appointment.id}`,
+      bookingId: appointment.id,
+      serviceId: service.id,
+      durationMinutes: service.durationMinutes,
+      bufferBeforeMinutes: service.bufferBeforeMinutes,
+      bufferAfterMinutes: service.bufferAfterMinutes,
+      unitPriceCents: service.priceCents,
+    });
+
+    payments.push({
+      id: `pay_${appointment.id}`,
       tenantId: tenant.id,
-      bookingId: bookings[1].id,
+      bookingId: appointment.id,
+      provider: appointment.provider,
+      status: appointment.paymentStatus,
+      amountCents: depositRequiredCents,
+      checkoutSessionId: appointment.checkoutSessionId,
+      paymentIntentId: appointment.paymentIntentId,
+      createdAt,
+      updatedAt,
+    });
+
+    notifications.push({
+      id: `notif_${appointment.id}`,
+      tenantId: tenant.id,
+      bookingId: appointment.id,
       channel: "email",
-      recipient: customers[1].email,
-      status: "queued",
-      templateKey: "booking-confirmed",
-    },
-  ];
+      recipient: customer.email,
+      status: notificationStatus,
+      templateKey:
+        appointment.notificationTemplateKey ??
+        (appointment.status === "confirmed" ? "booking-confirmed" : `booking-${appointment.status}`),
+      sentAt:
+        notificationStatus === "queued"
+          ? undefined
+          : (appointment.notificationSentAt ?? updatedAt),
+    });
+  }
 
   const auditEvents: AuditEvent[] = [
     {
@@ -362,8 +737,50 @@ function createInitialState(): DemoState {
       entityType: "tenant",
       entityId: tenant.id,
       action: "tenant.created",
-      createdAt: bookingOneStart,
+      createdAt: isoAt(archivedOperationalDate, 8, 30),
       payload: { profile: tenant.primaryProfile },
+    },
+    {
+      id: "audit_002",
+      tenantId: tenant.id,
+      actorLabel: "System seed",
+      entityType: "tenant",
+      entityId: tenant.id,
+      action: "seed.crm_imported",
+      createdAt: isoAt(historicOperationalDate, 18, 10),
+      payload: {
+        customers: customers.length,
+        services: services.length,
+        staffMembers: staffMembers.length,
+      },
+    },
+    {
+      id: "audit_003",
+      tenantId: tenant.id,
+      actorLabel: "System seed",
+      entityType: "booking",
+      entityId: "book_001",
+      action: "booking.seeded",
+      createdAt: seededNow,
+      payload: {
+        channel: "web",
+        status: "confirmed",
+        depositRequiredCents: 1650,
+      },
+    },
+    {
+      id: "audit_004",
+      tenantId: tenant.id,
+      actorLabel: "System seed",
+      entityType: "payment",
+      entityId: "pay_book_009",
+      action: "payment.reconciled",
+      createdAt: isoAt(currentOperationalDate, 18, 20),
+      payload: {
+        provider: "stripe",
+        status: "paid",
+        amountCents: 4600,
+      },
     },
   ];
 

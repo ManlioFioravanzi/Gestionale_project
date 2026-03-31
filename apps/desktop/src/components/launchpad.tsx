@@ -2,6 +2,7 @@ import type { BusinessProfile } from "@booking/core";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Building2, CalendarDays, KeyRound, Package } from "lucide-react";
 import type { FormEvent } from "react";
+import type { AppLanguage } from "../i18n";
 import { BeeHiveLogo } from "./beehive-logo";
 
 interface LaunchpadProps {
@@ -11,6 +12,7 @@ interface LaunchpadProps {
   onSelectProfile: (profile: BusinessProfile) => void;
   onActivationCodeChange: (value: string) => void;
   onActivate: () => void;
+  language: AppLanguage;
 }
 
 interface ProfileCardMeta {
@@ -21,42 +23,45 @@ interface ProfileCardMeta {
   icon: typeof CalendarDays;
 }
 
-const profileCards: ProfileCardMeta[] = [
-  {
-    id: "appointments",
-    title: "Appointments",
-    subtitle: "Profilo operativo disponibile ora",
-    available: true,
-    icon: CalendarDays,
-  },
-  {
-    id: "rooms",
-    title: "Rooms",
-    subtitle: "Profilo previsto, in arrivo",
-    available: false,
-    icon: Building2,
-  },
-  {
-    id: "resources",
-    title: "Resources",
-    subtitle: "Profilo previsto, in arrivo",
-    available: false,
-    icon: Package,
-  },
-];
+function getProfileCards(language: AppLanguage): ProfileCardMeta[] {
+  return [
+    {
+      id: "appointments",
+      title: "Appointments",
+      subtitle:
+        language === "en" ? "Operational profile available now" : "Profilo operativo disponibile ora",
+      available: true,
+      icon: CalendarDays,
+    },
+    {
+      id: "rooms",
+      title: "Rooms",
+      subtitle: language === "en" ? "Planned profile, coming soon" : "Profilo previsto, in arrivo",
+      available: false,
+      icon: Building2,
+    },
+    {
+      id: "resources",
+      title: "Resources",
+      subtitle: language === "en" ? "Planned profile, coming soon" : "Profilo previsto, in arrivo",
+      available: false,
+      icon: Package,
+    },
+  ];
+}
 
-function profileBadge(available: boolean) {
+function profileBadge(available: boolean, language: AppLanguage) {
   if (available) {
     return (
       <span className="inline-flex rounded-full border border-emerald-300/35 bg-emerald-400/12 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
-        disponibile
+        {language === "en" ? "available" : "disponibile"}
       </span>
     );
   }
 
   return (
     <span className="inline-flex rounded-full border border-slate-300/25 bg-slate-300/10 px-2 py-0.5 text-[11px] font-semibold text-slate-300">
-      in arrivo
+      {language === "en" ? "coming soon" : "in arrivo"}
     </span>
   );
 }
@@ -68,7 +73,9 @@ export function Launchpad({
   onSelectProfile,
   onActivationCodeChange,
   onActivate,
+  language,
 }: LaunchpadProps) {
+  const profileCards = getProfileCards(language);
   const activeProfile =
     profileCards.find((profile) => profile.id === selectedProfile) ?? null;
   const ActiveProfileIcon = activeProfile?.icon;
@@ -79,7 +86,10 @@ export function Launchpad({
   }
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-[#0b1426] px-6 py-10 font-sans">
+    <div
+      className="flex min-h-screen w-full items-center justify-center px-6 py-10 font-sans"
+      style={{ background: "var(--app-sidebar-bg)" }}
+    >
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -122,7 +132,7 @@ export function Launchpad({
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-slate-100">
                     <Icon className="h-5 w-5" />
                   </div>
-                  {profileBadge(profile.available)}
+                  {profileBadge(profile.available, language)}
                 </div>
                 <h2 className="mt-4 text-2xl font-bold tracking-tight text-white">
                   {profile.title}
@@ -149,7 +159,7 @@ export function Launchpad({
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300/80">
-                    Profilo selezionato
+                    {language === "en" ? "Selected profile" : "Profilo selezionato"}
                   </p>
                   <h3 className="text-lg font-bold text-white">{activeProfile.title}</h3>
                 </div>
@@ -159,14 +169,14 @@ export function Launchpad({
                 <label className="flex flex-col gap-2">
                   <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-300/85">
                     <KeyRound className="h-3.5 w-3.5" />
-                    Codice di attivazione
+                    {language === "en" ? "Activation code" : "Codice di attivazione"}
                   </span>
                   <input
                     autoFocus
                     type="password"
                     value={activationCode}
                     onChange={(event) => onActivationCodeChange(event.target.value)}
-                    placeholder="Inserisci il codice"
+                    placeholder={language === "en" ? "Enter the code" : "Inserisci il codice"}
                     className={[
                       "h-11 rounded-xl border px-3 text-sm font-semibold shadow-sm transition-all",
                       "focus:outline-none focus:ring-2",
@@ -183,7 +193,8 @@ export function Launchpad({
                   </div>
                 ) : (
                   <div className="rounded-xl border border-white/18 bg-[#121f3a] px-3 py-2 text-xs text-slate-300">
-                    Codice demo attuale: <strong className="text-white">12345</strong>
+                    {language === "en" ? "Current demo code:" : "Codice demo attuale:"}{" "}
+                    <strong className="text-white">12345</strong>
                   </div>
                 )}
 
@@ -192,7 +203,7 @@ export function Launchpad({
                   disabled={!activationCode.trim()}
                   className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-[#0b1426] transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
-                  Attiva
+                  {language === "en" ? "Activate" : "Attiva"}
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </form>

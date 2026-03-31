@@ -9,12 +9,12 @@ import {
   CreditCard,
   LayoutDashboard,
   Mail,
-  Scissors,
+  Package,
   Settings,
   UserCog,
   Users,
 } from "lucide-react";
-import type { MouseEvent } from "react";
+import type { AppLanguage } from "../i18n";
 import { BeeHiveLogo } from "./beehive-logo";
 
 export type SidebarSection =
@@ -36,20 +36,38 @@ interface SidebarProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
   notificationCount: number;
+  language: AppLanguage;
 }
 
-const navItems: Array<{ id: SidebarSection; label: string; icon: React.ElementType }> = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "planning", label: "Planning", icon: Calendar },
-  { id: "bookings", label: "Prenotazioni", icon: ClipboardList },
-  { id: "customers", label: "Clienti", icon: Users },
-  { id: "services", label: "Servizi", icon: Scissors },
-  { id: "staff", label: "Staff", icon: UserCog },
-  { id: "payments", label: "Pagamenti", icon: CreditCard },
-  { id: "notifications", label: "Notifiche", icon: Bell },
-  { id: "email", label: "Email", icon: Mail },
-  { id: "settings", label: "Impostazioni", icon: Settings },
-];
+function getNavItems(language: AppLanguage): Array<{ id: SidebarSection; label: string; icon: React.ElementType }> {
+  if (language === "en") {
+    return [
+      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { id: "planning", label: "Planning", icon: Calendar },
+      { id: "bookings", label: "Bookings", icon: ClipboardList },
+      { id: "customers", label: "Customers", icon: Users },
+      { id: "services", label: "Services", icon: Package },
+      { id: "staff", label: "Staff", icon: UserCog },
+      { id: "payments", label: "Payments", icon: CreditCard },
+      { id: "notifications", label: "Notifications", icon: Bell },
+      { id: "email", label: "Email", icon: Mail },
+      { id: "settings", label: "Settings", icon: Settings },
+    ];
+  }
+
+  return [
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "planning", label: "Planning", icon: Calendar },
+    { id: "bookings", label: "Prenotazioni", icon: ClipboardList },
+    { id: "customers", label: "Clienti", icon: Users },
+    { id: "services", label: "Servizi", icon: Package },
+    { id: "staff", label: "Staff", icon: UserCog },
+    { id: "payments", label: "Pagamenti", icon: CreditCard },
+    { id: "notifications", label: "Notifiche", icon: Bell },
+    { id: "email", label: "Email", icon: Mail },
+    { id: "settings", label: "Impostazioni", icon: Settings },
+  ];
+}
 
 export function Sidebar({
   activeSection,
@@ -58,18 +76,31 @@ export function Sidebar({
   collapsed,
   onToggleCollapse,
   notificationCount,
+  language,
 }: SidebarProps) {
+  const navItems = getNavItems(language);
+  const returnLabel =
+    language === "en" ? "Return to profile selection" : "Torna alla selezione profilo";
+
   return (
     <motion.aside
-      className="bg-[#0f172a] text-white flex flex-col h-full relative"
+      className="flex h-full flex-col relative"
       animate={{ width: collapsed ? 68 : 240 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      style={{ willChange: "width" }}
+      style={{
+        willChange: "width",
+        background: "var(--app-sidebar-bg)",
+        color: "var(--app-sidebar-text)",
+      }}
+      data-theme-surface="sidebar"
     >
       <div className="flex-1 overflow-y-auto py-6 flex flex-col gap-6 no-scrollbar">
         {/* Branding */}
         <div className="px-4 flex items-center justify-center min-h-[48px]">
-          <div className="bg-white/10 w-10 h-10 rounded shadow-sm flex items-center justify-center shrink-0 overflow-hidden">
+          <div
+            className="w-10 h-10 rounded shadow-sm flex items-center justify-center shrink-0 overflow-hidden"
+            style={{ backgroundColor: "var(--app-sidebar-surface)" }}
+          >
             <BeeHiveLogo size={24} />
           </div>
           <AnimatePresence>
@@ -80,7 +111,9 @@ export function Sidebar({
                 exit={{ opacity: 0, width: 0 }}
                 className="ml-3 overflow-hidden whitespace-nowrap"
               >
-                <div className="text-[10px] font-bold tracking-wider text-slate-400">DESKTOP ADMIN</div>
+                <div className="text-[10px] font-bold tracking-wider" style={{ color: "var(--app-sidebar-muted)" }}>
+                  DESKTOP ADMIN
+                </div>
                 <div className="font-semibold text-lg leading-tight mt-0.5 tracking-tight">BeeHive</div>
               </motion.div>
             )}
@@ -97,16 +130,15 @@ export function Sidebar({
               <button
                 key={item.id}
                 onClick={() => onSectionSelect(item.id)}
-                className={`
-                  relative flex items-center h-10 px-2 rounded-lg transition-colors group
-                  ${isActive ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-white"}
-                `}
+                className="app-sidebar-nav-btn relative flex items-center h-10 px-2 rounded-lg transition-colors group"
+                data-active={isActive ? "true" : "false"}
                 title={collapsed ? item.label : undefined}
               >
                 {isActive && (
                   <motion.div
                     layoutId="sidebar-active-indicator"
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-blue-500 rounded-full"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-full"
+                    style={{ backgroundColor: "var(--app-accent)" }}
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                   />
                 )}
@@ -129,7 +161,7 @@ export function Sidebar({
                       initial={{ opacity: 0, width: 0 }}
                       animate={{ opacity: 1, width: "auto" }}
                       exit={{ opacity: 0, width: 0 }}
-                      className={`text-sm font-medium whitespace-nowrap overflow-hidden text-left flex-1 px-2 ${isActive ? "text-white" : "text-slate-300"}`}
+                      className="text-sm font-medium whitespace-nowrap overflow-hidden text-left flex-1 px-2"
                     >
                       {item.label}
                     </motion.div>
@@ -138,9 +170,13 @@ export function Sidebar({
 
                 {item.id === "notifications" && notificationCount > 0 && (
                   <div className={`
-                    absolute right-2 flex items-center justify-center bg-blue-600 font-bold text-white rounded-full
+                    absolute right-2 flex items-center justify-center font-bold rounded-full
                     ${collapsed ? "top-1 right-1 w-4 h-4 text-[9px]" : "top-1/2 -translate-y-1/2 w-5 h-5 text-[10px]"}
-                  `}>
+                  `}
+                  style={{
+                    backgroundColor: "var(--app-accent)",
+                    color: "var(--app-sidebar-notification-text)",
+                  }}>
                     {notificationCount}
                   </div>
                 )}
@@ -150,11 +186,11 @@ export function Sidebar({
         </nav>
 
         <div className="px-3">
-          <div className="mb-3 border-t border-white/10" />
+          <div className="mb-3 border-t" style={{ borderColor: "var(--app-sidebar-border)" }} />
           <button
             onClick={onReturnToProfileSelection}
-            className="relative flex h-10 w-full items-center rounded-lg px-2 text-amber-200 transition-colors group hover:bg-white/5 hover:text-white"
-            title={collapsed ? "Torna alla selezione profilo" : undefined}
+            className="app-sidebar-return-btn relative flex h-10 w-full items-center rounded-lg px-2 transition-colors group"
+            title={collapsed ? returnLabel : undefined}
           >
             <AnimatePresence mode="popLayout">
               {collapsed ? (
@@ -177,7 +213,7 @@ export function Sidebar({
                   className="flex items-center gap-3 overflow-hidden whitespace-nowrap px-2 text-left"
                 >
                   <ArrowLeftCircle className="h-[18px] w-[18px] shrink-0" strokeWidth={2} />
-                  <span className="text-sm font-medium">Selezione profilo</span>
+                  <span className="text-sm font-medium">{language === "en" ? "Profile selection" : "Selezione profilo"}</span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -186,10 +222,10 @@ export function Sidebar({
       </div>
 
       {/* Footer Toggle */}
-      <div className="p-4 border-t border-white/10">
+      <div className="p-4 border-t" style={{ borderColor: "var(--app-sidebar-border)" }}>
         <button
           onClick={onToggleCollapse}
-          className="w-full flex items-center justify-center h-10 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+          className="app-sidebar-toggle-btn w-full flex items-center justify-center h-10 rounded-lg transition-colors"
         >
           {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
         </button>

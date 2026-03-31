@@ -14,11 +14,14 @@ describe("planning actions", () => {
     resetDemoState();
     const before = getDashboardSnapshot("studio-aurora");
     const service = before.services[0];
+    const seedBooking = before.bookings.find((booking) => booking.id === "book_001");
+    expect(seedBooking).toBeTruthy();
+
     const slot = listPublicAvailability(
       "studio-aurora",
       service.id,
-      before.bookings[0].startsAt.slice(0, 10),
-    ).find((entry) => entry.staffMemberId === "staff_elena");
+      seedBooking!.startsAt.slice(0, 10),
+    ).find((entry) => entry.staffMemberId === "staff_elena" && entry.startsAt !== seedBooking!.startsAt);
 
     expect(slot).toBeTruthy();
 

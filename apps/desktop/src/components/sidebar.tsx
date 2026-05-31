@@ -14,6 +14,7 @@ import {
   UserCog,
   Users,
 } from "lucide-react";
+import type { BusinessProfile } from "@booking/core";
 import type { AppLanguage } from "../i18n";
 import { BeeHiveLogo } from "./beehive-logo";
 
@@ -37,9 +38,43 @@ interface SidebarProps {
   onToggleCollapse: () => void;
   notificationCount: number;
   language: AppLanguage;
+  profile: BusinessProfile | null;
 }
 
-function getNavItems(language: AppLanguage): Array<{ id: SidebarSection; label: string; icon: React.ElementType }> {
+function getNavItems(
+  language: AppLanguage,
+  profile: BusinessProfile | null,
+): Array<{ id: SidebarSection; label: string; icon: React.ElementType }> {
+  if (profile === "rooms") {
+    if (language === "en") {
+      return [
+        { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { id: "planning", label: "Rooms planning", icon: Calendar },
+        { id: "bookings", label: "Reservations", icon: ClipboardList },
+        { id: "customers", label: "Guests", icon: Users },
+        { id: "services", label: "Rooms", icon: Package },
+        { id: "staff", label: "Housekeeping", icon: UserCog },
+        { id: "payments", label: "Payments", icon: CreditCard },
+        { id: "notifications", label: "Notifications", icon: Bell },
+        { id: "email", label: "Email", icon: Mail },
+        { id: "settings", label: "Settings", icon: Settings },
+      ];
+    }
+
+    return [
+      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { id: "planning", label: "Planning camere", icon: Calendar },
+      { id: "bookings", label: "Prenotazioni", icon: ClipboardList },
+      { id: "customers", label: "Ospiti", icon: Users },
+      { id: "services", label: "Camere", icon: Package },
+      { id: "staff", label: "Housekeeping", icon: UserCog },
+      { id: "payments", label: "Pagamenti", icon: CreditCard },
+      { id: "notifications", label: "Notifiche", icon: Bell },
+      { id: "email", label: "Email", icon: Mail },
+      { id: "settings", label: "Impostazioni", icon: Settings },
+    ];
+  }
+
   if (language === "en") {
     return [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -77,8 +112,9 @@ export function Sidebar({
   onToggleCollapse,
   notificationCount,
   language,
+  profile,
 }: SidebarProps) {
-  const navItems = getNavItems(language);
+  const navItems = getNavItems(language, profile);
   const returnLabel =
     language === "en" ? "Return to profile selection" : "Torna alla selezione profilo";
 

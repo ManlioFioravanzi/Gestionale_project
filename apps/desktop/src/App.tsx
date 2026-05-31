@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 
 import { PlanningBoard } from "./planning-board";
+import { RoomPlanningBoard } from "./rooms-planning-board";
 import { EmailPlugin } from "./components/email-plugin";
 import { Launchpad } from "./components/launchpad";
 import { DashboardPerformance } from "./components/dashboard-performance";
@@ -374,6 +375,96 @@ function getSectionMeta(language: AppLanguage): Record<SidebarSection, { title: 
   };
 }
 
+function getRoomsSectionMeta(language: AppLanguage): Record<SidebarSection, { title: string; description: string }> {
+  if (language === "en") {
+    return {
+      dashboard: {
+        title: "Rooms dashboard",
+        description: "Monitor occupancy, arrivals, departures, and active room operations.",
+      },
+      planning: {
+        title: "Rooms planning",
+        description: "Coordinate stays across rooms with a horizontal occupancy grid.",
+      },
+      bookings: {
+        title: "Reservations",
+        description: "Manage room reservations, payment states, and operational actions.",
+      },
+      customers: {
+        title: "Guests CRM",
+        description: "Browse guest records and contact details.",
+      },
+      services: {
+        title: "Rooms inventory",
+        description: "Review room categories, setup, and sellable units.",
+      },
+      staff: {
+        title: "Housekeeping",
+        description: "Coordinate team coverage and room readiness.",
+      },
+      payments: {
+        title: "Payments ledger",
+        description: "Track deposits, manual collections, and Stripe movements.",
+      },
+      notifications: {
+        title: "Notifications",
+        description: "Track transactional communication delivery.",
+      },
+      email: {
+        title: "Email",
+        description: "Read and reply to guest email directly from the desktop app.",
+      },
+      settings: {
+        title: "Hotel settings",
+        description: "Manage language, access, and operational configuration.",
+      },
+    };
+  }
+
+  return {
+    dashboard: {
+      title: "Dashboard camere",
+      description: "Controlla occupazione, arrivi, partenze e operatività camere.",
+    },
+    planning: {
+      title: "Planning camere",
+      description: "Coordina i soggiorni su una griglia orizzontale per camera.",
+    },
+    bookings: {
+      title: "Prenotazioni",
+      description: "Gestisci prenotazioni camere, stati pagamento e azioni operative.",
+    },
+    customers: {
+      title: "Ospiti CRM",
+      description: "Consulta le schede ospite e i dati di contatto.",
+    },
+    services: {
+      title: "Inventario camere",
+      description: "Verifica categorie, setup e unità vendibili.",
+    },
+    staff: {
+      title: "Housekeeping",
+      description: "Coordina copertura del team e readiness camere.",
+    },
+    payments: {
+      title: "Ledger pagamenti",
+      description: "Segui caparre, incassi manuali e movimenti Stripe.",
+    },
+    notifications: {
+      title: "Notifiche",
+      description: "Controlla l'invio delle comunicazioni transazionali.",
+    },
+    email: {
+      title: "Email",
+      description: "Leggi e rispondi alle email degli ospiti direttamente dal gestionale.",
+    },
+    settings: {
+      title: "Impostazioni hotel",
+      description: "Gestisci lingua, accessi e configurazione operativa.",
+    },
+  };
+}
+
 function currency(cents: number, snapshot: DashboardSnapshot, locale = snapshot.tenant.locale) {
   return new Intl.NumberFormat(locale, {
     style: "currency",
@@ -506,10 +597,12 @@ export default function App() {
   const [settingsAccessError, setSettingsAccessError] = useState<string | null>(null);
   const [copiedSecret, setCopiedSecret] = useState<"stripePublishableKey" | "stripeSecretKey" | "googleCalendarApiKey" | null>(null);
   const deferredSearch = useDeferredValue(search.toLowerCase());
-  const appUnlocked = selectedProfile === "appointments" && isActivated;
+  const appUnlocked =
+    (selectedProfile === "appointments" || selectedProfile === "rooms") && isActivated;
   const appLanguage = getLanguageFromLocale(previewUiPreferences.locale);
   const settingsSections = getSettingsSections(appLanguage);
-  const sectionMeta = getSectionMeta(appLanguage);
+  const sectionMeta =
+    selectedProfile === "rooms" ? getRoomsSectionMeta(appLanguage) : getSectionMeta(appLanguage);
   const theme = desktopThemes[previewUiPreferences.themeMode];
   const liveAccentColor =
     previewUiPreferences.themeSwatches[previewUiPreferences.themeMode] ??
@@ -520,6 +613,18 @@ export default function App() {
     settingsDraft.themeSwatches[settingsDraft.themeMode] !==
       confirmedUiPreferences.themeSwatches[settingsDraft.themeMode];
   const isEnglish = appLanguage === "en";
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 900px)");
+    const syncSidebarForViewport = () => setSidebarCollapsed(mediaQuery.matches);
+
+    syncSidebarForViewport();
+    mediaQuery.addEventListener("change", syncSidebarForViewport);
+
+    return () => {
+      mediaQuery.removeEventListener("change", syncSidebarForViewport);
+    };
+  }, []);
 
   useEffect(() => {
     document.documentElement.lang = isEnglish ? "en" : "it";
@@ -967,7 +1072,7 @@ export default function App() {
       return;
     }
 
-    if (selectedProfile !== "appointments") {
+    if (selectedProfile === "resources") {
       setActivationError(
         isEnglish
           ? `${translateStatusLabel(selectedProfile, appLanguage)} is not active yet. Use Appointments to enter BeeHive.`
@@ -985,11 +1090,14 @@ export default function App() {
 
     setActivationError(null);
     setIsActivated(true);
+    if (selectedProfile === "rooms") {
+      setSection("planning");
+    }
     notify(
       "success",
       isEnglish
-        ? "Appointments profile activated. Access to the management app completed."
-        : "Profilo Appointments attivato. Accesso al gestionale completato.",
+        ? `${translateStatusLabel(selectedProfile, appLanguage)} profile activated. Access to the management app completed.`
+        : `Profilo ${translateStatusLabel(selectedProfile, appLanguage)} attivato. Accesso al gestionale completato.`,
     );
   }
 
@@ -1279,6 +1387,7 @@ export default function App() {
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         notificationCount={unreadNotifications}
         language={appLanguage}
+        profile={selectedProfile}
       />
 
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
@@ -1287,23 +1396,37 @@ export default function App() {
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto w-full">
           {section === "planning" ? (
-            <PlanningBoard
-              key={plannerVersion}
-              snapshot={snapshot}
-              searchQuery={search}
-              onRefresh={refresh}
-              onNotify={notify}
-              language={appLanguage}
-              locale={settingsDraft.locale}
-              theme={theme}
-            />
+            selectedProfile === "rooms" ? (
+              <RoomPlanningBoard
+                snapshot={snapshot}
+                searchQuery={search}
+                onNotify={notify}
+                language={appLanguage}
+                locale={settingsDraft.locale}
+              />
+            ) : (
+              <PlanningBoard
+                key={plannerVersion}
+                snapshot={snapshot}
+                searchQuery={search}
+                onRefresh={refresh}
+                onNotify={notify}
+                language={appLanguage}
+                locale={settingsDraft.locale}
+                theme={theme}
+              />
+            )
           ) : (
             <div className="max-w-7xl mx-auto px-6 lg:px-10 py-8 lg:py-10">
               <PageHeader
                 title={activeSection.title}
                 badges={[
                   <StatusBadge key="tenant" status={`tenant/${snapshot.tenant.slug}`} variant="neutral" />,
-                  <StatusBadge key="profile" status={translateStatusLabel(snapshot.tenant.primaryProfile, appLanguage)} variant="info" />
+                  <StatusBadge
+                    key="profile"
+                    status={translateStatusLabel(selectedProfile ?? snapshot.tenant.primaryProfile, appLanguage)}
+                    variant="info"
+                  />
                 ]}
                 language={appLanguage}
                 actions={

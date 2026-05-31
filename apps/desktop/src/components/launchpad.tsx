@@ -36,8 +36,9 @@ function getProfileCards(language: AppLanguage): ProfileCardMeta[] {
     {
       id: "rooms",
       title: "Rooms",
-      subtitle: language === "en" ? "Planned profile, coming soon" : "Profilo previsto, in arrivo",
-      available: false,
+      subtitle:
+        language === "en" ? "Rooms planning and occupancy grid" : "Planning camere e griglia occupazione",
+      available: true,
       icon: Building2,
     },
     {
